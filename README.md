@@ -15,7 +15,7 @@
 
 ## Сваляне
 
-Последната версия: [OLTechX-Proverka-Setup.exe](https://github.com/Haygarov04/oltechx-proverka/releases/latest/download/OLTechX-Proverka-Setup.exe).
+Последната версия: [OLTechX-Proverka-Setup.exe](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Proverka-Setup.exe).
 
 Програмата още не е подписана, затова Windows първия път показва „Windows защити компютъра ви“.
 Натисни „Повече информация“ и „Изпълни въпреки това“.

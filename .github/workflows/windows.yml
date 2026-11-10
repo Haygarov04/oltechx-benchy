@@ -1,6 +1,6 @@
 # Инсталаторът за Windows се сглобява тук, защото от Mac не може. Пуска се с таг v* (например v0.1.0)
 # или ръчно. Файлът отива в Releases и се сваля безплатно от
-# https://github.com/Haygarov04/oltechx-proverka/releases/latest/download/OLTechX-Proverka-Setup.exe
+# https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Proverka-Setup.exe
 name: Windows
 
 on:
