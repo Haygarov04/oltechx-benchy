@@ -1,0 +1,583 @@
+/* Цветовете и шрифтовете са като в сайта, за да се усеща като част от OLTechX. */
+:root {
+  --bg: #f6f5f1;
+  --card: #ffffff;
+  --fg: #0f1318;
+  --muted: #5d6470;
+  --border: #e2e0d8;
+  --soft: #efeee8;
+  --primary: #0a46c2;
+  --primary-fg: #ffffff;
+  --success: #128a58;
+  --warning: #b45309;
+  --danger: #b42318;
+  --display: "Sofia Sans Extra Condensed", "Sofia Sans", system-ui, sans-serif;
+  --sans: "Sofia Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --card: #141a22;
+    --fg: #e7ecf3;
+    --muted: #93a0b2;
+    --border: #253041;
+    --soft: #1a2230;
+    --primary: #4c8dff;
+    --primary-fg: #06122b;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--primary) 12%, transparent) 1px, transparent 0) 0 0 / 16px 16px,
+    var(--bg);
+  color: var(--fg);
+  font: 16px/1.45 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.topbar .logo {
+  height: 30px;
+  width: auto;
+}
+
+.topbar .title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.main {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.display {
+  font-family: var(--display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+  line-height: 0.92;
+  margin: 0;
+}
+
+.h1 {
+  font-size: 56px;
+}
+
+.h2 {
+  font-size: 28px;
+}
+
+.silk {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s, background-color 0.2s, border-color 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+}
+
+.btn-lg {
+  height: 52px;
+  padding: 0 24px;
+  font-size: 17px;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.input {
+  height: 44px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 0 14px;
+  font: 600 18px var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg);
+  user-select: text;
+}
+
+.input:focus,
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.alert {
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.alert-warn {
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
+
+.alert-error {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+/* Части като чипове: иконка-„матрица“ с крачета, име и характеристики. */
+.parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.part {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+button.part {
+  cursor: pointer;
+}
+
+.part[data-on="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+  background: color-mix(in oklab, var(--primary) 6%, var(--card));
+}
+
+.die {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-inline: 3px;
+  border-radius: 6px;
+  color: #fff;
+  background: linear-gradient(140deg, #3b82f6, var(--primary) 55%, #062a7a);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px rgb(0 0 0 / 0.25);
+}
+
+.die::before,
+.die::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  background: repeating-linear-gradient(to bottom, color-mix(in oklab, var(--primary) 60%, var(--fg)) 0 2px, transparent 2px 5px);
+}
+
+.die::before {
+  left: -4px;
+}
+
+.die::after {
+  right: -4px;
+}
+
+.die svg {
+  width: 20px;
+  height: 20px;
+}
+
+.part-name {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.part-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge-ok {
+  background: color-mix(in oklab, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.badge-bad {
+  background: color-mix(in oklab, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+
+.tick {
+  margin-left: auto;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+}
+
+.part[data-on="true"] .tick {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+}
+
+.tick svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Етапите на теста като части от платка: светват един след друг. */
+.board {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--primary) 18%, transparent) 1px, transparent 0) 0 0 / 14px 14px,
+    var(--card);
+}
+
+.bus {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  background: var(--border);
+  margin: 4px 0 16px;
+}
+
+.bus::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, var(--primary) 40%, color-mix(in oklab, var(--primary) 40%, white) 50%, var(--primary) 60%, transparent);
+  animation: packet 1.4s linear infinite;
+}
+
+.stations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.station {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: color-mix(in oklab, var(--soft) 60%, transparent);
+  transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+}
+
+.station[data-state="active"] {
+  border-color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 7%, var(--card));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent), 0 0 24px color-mix(in oklab, var(--primary) 22%, transparent);
+}
+
+.station[data-state="done"] {
+  border-color: color-mix(in oklab, var(--success) 50%, var(--border));
+}
+
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--fg) 18%, transparent);
+}
+
+.station[data-state="active"] .led {
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+  animation: blink 0.9s ease-in-out infinite;
+}
+
+.station[data-state="done"] .led {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.station-value {
+  font: 700 22px var(--mono);
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meter {
+  display: block;
+  height: 10px;
+  color: var(--primary);
+  background: linear-gradient(90deg, currentColor var(--fill), color-mix(in oklab, currentColor 18%, transparent) var(--fill));
+  mask: repeating-linear-gradient(90deg, #000 0 calc(5% - 3px), transparent calc(5% - 3px) 5%);
+}
+
+.scope {
+  width: 100%;
+  height: 120px;
+}
+
+.scope-line {
+  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--primary) 55%, transparent));
+}
+
+.scope-dot {
+  animation: blink 1s ease-in-out infinite;
+}
+
+.code {
+  display: inline-block;
+  background: var(--primary);
+  color: var(--primary-fg);
+  padding: 14px 20px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.code-value {
+  font: 700 46px var(--mono);
+  letter-spacing: 0.14em;
+  user-select: text;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  animation: stamp 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.hero .die {
+  width: 56px;
+  height: 56px;
+}
+
+.hero .die svg {
+  width: 30px;
+  height: 30px;
+}
+
+.die-ok {
+  background: linear-gradient(140deg, #34d399, var(--success) 55%, #065f46);
+}
+
+.die-bad {
+  background: linear-gradient(140deg, #f87171, var(--danger) 55%, #7f1d1d);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes packet {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .parts {
+    grid-template-columns: 1fr;
+  }
+  .h1 {
+    font-size: 44px;
+  }
+}

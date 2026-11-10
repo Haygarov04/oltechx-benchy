@@ -1,0 +1,89 @@
+{
+  "name": "oltechx-proverka",
+  "productName": "OLTechX Проверка",
+  "version": "0.1.0",
+  "description": "Проверка на компютър за обява в OLTechX: разпознава частите и ги тества под натоварване.",
+  "author": "OLTechX <oltechx@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build:main": "node scripts/build-main.mjs",
+    "build:renderer": "vite build",
+    "build": "npm run build:main && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "typecheck": "tsc --noEmit -p .",
+    "dist:win": "npm run build && electron-builder --win nsis --publish never",
+    "release:win": "npm run build && electron-builder --win nsis --publish always"
+  },
+  "dependencies": {
+    "systeminformation": "^5.33.19"
+  },
+  "devDependencies": {
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/sofia-sans": "^5.3.0",
+    "@fontsource/sofia-sans-extra-condensed": "^5.3.0",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "@webgpu/types": "^0.1.69",
+    "electron": "^45.3.0",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "lucide-react": "^1.71.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Haygarov04/oltechx-proverka.git"
+  },
+  "build": {
+    "appId": "com.oltechx.proverka",
+    "productName": "OLTechX Проверка",
+    "executableName": "OLTechXProverka",
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "OLTechX-Proverka-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": true,
+      "shortcutName": "OLTechX Проверка"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Haygarov04",
+        "repo": "oltechx-proverka",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
