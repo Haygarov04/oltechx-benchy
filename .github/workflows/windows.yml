@@ -1,5 +1,5 @@
-# Инсталаторът за Windows се сглобява тук, защото от Mac не може. Пуска се с таг v* (например v0.1.0)
-# или ръчно. Файлът отива в Releases и се сваля безплатно от
+# Инсталаторът за Windows се сглобява тук, защото от Mac не може. Пуска се с таг v* (например v0.1.1).
+# Файлът отива в Releases и се сваля безплатно от
 # https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Proverka-Setup.exe
 name: Windows
 
@@ -22,6 +22,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run release:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run dist:win
+      # Едно издание с всички файлове. electron-builder сам понякога прави две за един таг.
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release/OLTechX-Proverka-Setup.exe
+            release/OLTechX-Proverka-Setup.exe.blockmap
+            release/latest.yml
