@@ -1,107 +1,19 @@
 /// <reference types="@webgpu/types" />
-import type { CheckResults } from "../shared/types";
+import { stopped } from "./workers";
 
 /**
- * The stress test. Every calculation has a known correct answer, so a wrong result means unstable
- * hardware, not just slow hardware. The numbers go to the server, which decides pass or fail.
+ * Graphics card tests on WebGPU. Every result is checked against an answer computed on the processor.
  * Failure reasons stay in Bulgarian because the OLTechX site shows them to buyers.
  */
 
-export type Phase = "cpu" | "gpu" | "vram";
-
-export type Progress = {
-  phase: Phase;
-  /** From 0 to 1 for the whole test. */
-  overall: number;
-  cpuRate?: number;
-  gpuSamples?: number[];
-  vramMb?: number;
-  vramTarget?: number;
-};
-
 const MB = 1024 * 1024;
 
-async function requestAdapter(): Promise<GPUAdapter | null> {
+export async function requestAdapter(): Promise<GPUAdapter | null> {
   try {
     return (await navigator.gpu?.requestAdapter({ powerPreference: "high-performance" })) ?? null;
   } catch {
     return null;
   }
-}
-
-// ── Processor ───────────────────────────────────────────────────────────────
-
-const CPU_N = 100_000;
-const CPU_OPS = CPU_N * 7;
-
-/** The same calculation as in the workers. The answer is known in advance. */
-function cpuUnit(seed: number, n: number) {
-  let x = seed | 0;
-  for (let i = 0; i < n; i++) {
-    x ^= x << 13;
-    x ^= x >>> 17;
-    x ^= x << 5;
-    x = (Math.imul(x, 1664525) + 1013904223) | 0;
-  }
-  return x;
-}
-
-const WORKER = `
-function unit(seed, n) {
-  let x = seed | 0;
-  for (let i = 0; i < n; i++) { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; x = (Math.imul(x, 1664525) + 1013904223) | 0; }
-  return x;
-}
-onmessage = (event) => {
-  const { seeds, expected, n, durationMs } = event.data;
-  const start = performance.now();
-  const end = start + durationMs;
-  let units = 0, errors = 0, last = start;
-  for (;;) {
-    const now = performance.now();
-    if (now >= end) break;
-    const k = units % seeds.length;
-    if (unit(seeds[k], n) !== expected[k]) errors++;
-    units++;
-    if (now - last > 250) { postMessage({ done: false, units, errors, ms: now - start }); last = now; }
-  }
-  postMessage({ done: true, units, errors, ms: performance.now() - start });
-};`;
-
-type WorkerTotals = { rate: number; units: number; errors: number };
-
-function runWorkers(count: number, durationMs: number, signal: AbortSignal, onRate: (rate: number) => void): Promise<WorkerTotals> {
-  const seeds = Array.from({ length: 8 }, (_, i) => (i + 1) * 2654435761);
-  const expected = seeds.map((s) => cpuUnit(s, CPU_N));
-  const url = URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
-  const state = Array.from({ length: count }, () => ({ units: 0, errors: 0, ms: 1, done: false }));
-  const workers = state.map(() => new Worker(url));
-  const rate = () => state.reduce((sum, s) => sum + (s.units * CPU_OPS) / (s.ms / 1000), 0);
-  return new Promise((resolve, reject) => {
-    const stop = () => {
-      workers.forEach((w) => w.terminate());
-      URL.revokeObjectURL(url);
-    };
-    signal.addEventListener("abort", () => {
-      stop();
-      reject(new DOMException("Stopped", "AbortError"));
-    });
-    workers.forEach((worker, i) => {
-      worker.onerror = () => {
-        stop();
-        reject(new Error("The processor test stopped."));
-      };
-      worker.onmessage = (event: MessageEvent<{ done: boolean; units: number; errors: number; ms: number }>) => {
-        Object.assign(state[i], event.data);
-        onRate(rate());
-        if (state.every((s) => s.done)) {
-          stop();
-          resolve({ rate: rate(), units: state.reduce((s, x) => s + x.units, 0), errors: state.reduce((s, x) => s + x.errors, 0) });
-        }
-      };
-      worker.postMessage({ seeds, expected, n: CPU_N, durationMs });
-    });
-  });
 }
 
 // ── Graphics card ────────────────────────────────────────────────────────────
@@ -140,7 +52,7 @@ function gpuReference(index: number, seed: number, iterations: number) {
   return x;
 }
 
-async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSignal, onSamples: (samples: number[]) => void) {
+export async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSignal, onSamples: (samples: number[]) => void) {
   const shader = device.createShaderModule({ code: STRESS });
   const pipeline = device.createComputePipeline({ layout: "auto", compute: { module: shader, entryPoint: "main" } });
   const out = device.createBuffer({ size: INVOCATIONS * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
@@ -179,7 +91,7 @@ async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSig
   // Warm-up: the card raises its clocks over a few seconds. This time is not counted.
   const warm = performance.now() + 5000;
   while (performance.now() < warm) {
-    if (signal.aborted) throw new DOMException("Stopped", "AbortError");
+    if (signal.aborted) throw stopped();
     await dispatch(iterations, 7, false);
   }
 
@@ -193,7 +105,7 @@ async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSig
   let lastCheck = 0;
   const end = performance.now() + durationMs;
   while (performance.now() < end) {
-    if (signal.aborted) throw new DOMException("Stopped", "AbortError");
+    if (signal.aborted) throw stopped();
     const verify = performance.now() - lastCheck > 1000;
     const seed = (Math.random() * 4294967296) >>> 0;
     const ms = await dispatch(iterations, seed, verify);
@@ -258,7 +170,7 @@ fn verify(@builtin(global_invocation_id) id: vec3<u32>) {
 }`;
 
 /** Writes a pattern into graphics memory and verifies every cell. Twice, with inverted bits. */
-async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: number, signal: AbortSignal, onMb: (mb: number) => void) {
+export async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: number, signal: AbortSignal, onMb: (mb: number) => void) {
   const chunkBytes = Math.floor(Math.min(256 * MB, adapter.limits.maxStorageBufferBindingSize, adapter.limits.maxBufferSize) / 4) * 4;
   const chunkMb = chunkBytes / MB;
   const buffers: GPUBuffer[] = [];
@@ -294,7 +206,7 @@ async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: numb
   let done = 0;
   for (const invert of [0, 1]) {
     for (let i = 0; i < buffers.length; i++) {
-      if (signal.aborted) throw new DOMException("Stopped", "AbortError");
+      if (signal.aborted) throw stopped();
       device.queue.writeBuffer(params, 0, new Uint32Array([0x9e3779b9 ^ (i * 7919), chunkBytes / 4, invert, 0]));
       const group = device.createBindGroup({
         layout,
@@ -328,81 +240,181 @@ async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: numb
   return { tested: true, testedMb: buffers.length * chunkMb, errors };
 }
 
-// ── The whole test ───────────────────────────────────────────────────────────
 
-const NO_GPU = { tested: false, opsPerSec: 0, samples: [] as number[], checked: 0, errors: 0 };
+// ── Floating point (FP32) ────────────────────────────────────────────────────
 
-/** The whole test. vramTargetMb is how much graphics memory to verify. */
-export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) => void, vramTargetMb: number): Promise<CheckResults> {
-  const started = performance.now();
-  let hiddenMs = 0;
-  let hiddenSince: number | null = document.hidden ? performance.now() : null;
-  const onVisibility = () => {
-    if (document.hidden) hiddenSince = performance.now();
-    else if (hiddenSince !== null) {
-      hiddenMs += performance.now() - hiddenSince;
-      hiddenSince = null;
-    }
-  };
-  document.addEventListener("visibilitychange", onVisibility);
-  try {
-    onProgress({ phase: "cpu", overall: 0 });
-    const adapter = await requestAdapter();
-    let gpuDevice: GPUDevice | null = null;
-    let lost: string | null = null;
-    if (adapter) {
-      try {
-        gpuDevice = await adapter.requestDevice({
-          requiredLimits: { maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize, maxBufferSize: adapter.limits.maxBufferSize },
-        });
-        gpuDevice.lost.then((info) => {
-          if (info.reason !== "destroyed") lost = info.message || "Видеокартата спря да отговаря.";
-        });
-      } catch {
-        gpuDevice = null;
-      }
-    }
+/**
+ * Four chains of x = x·x + c per thread, the work games and AI do. Each chain settles on a value
+ * that floats represent exactly (0.125, 0.0625, 0.09375, 0.03125), so every result must be 0.3125.
+ * x·x + c cannot be folded into fewer operations, so the compiler cannot skip work.
+ */
+const FLOPS = /* wgsl */ `
+struct Params { iterations: u32, pad: u32 };
+@group(0) @binding(0) var<storage, read_write> out: array<f32>;
+@group(0) @binding(1) var<uniform> params: Params;
 
-    // The app has time: longer stages give steadier numbers. The graphics warm-up is 5 seconds.
-    const singleMs = 6000;
-    const multiMs = gpuDevice ? 15_000 : 40_000;
-    const gpuMs = gpuDevice ? 30_000 : 0;
-    const memoryMs = gpuDevice ? Math.max(4000, vramTargetMb * 3) : 0;
-    const total = singleMs + multiMs + (gpuDevice ? 5000 : 0) + gpuMs + memoryMs;
-    const at = (ms: number) => Math.min(1, ms / total);
-
-    const threads = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 64));
-    const single = await runWorkers(1, singleMs, signal, (rate) => onProgress({ phase: "cpu", overall: at(0), cpuRate: rate }));
-    const multi = await runWorkers(threads, multiMs, signal, (rate) => onProgress({ phase: "cpu", overall: at(singleMs), cpuRate: rate }));
-    const cpu = { threads, single: single.rate, multi: multi.rate, checked: single.units + multi.units, errors: single.errors + multi.errors };
-
-    let gpu: CheckResults["gpu"] = { ...NO_GPU, reason: adapter ? "Видеокартата не позволи тест." : "Драйверът на видеокартата не поддържа теста. Обнови драйвера." };
-    let vram: CheckResults["vram"] = { tested: false, reason: gpu.reason, testedMb: 0, errors: 0 };
-    if (gpuDevice) {
-      const base = singleMs + multiMs + 5000;
-      try {
-        const stress = await gpuStress(gpuDevice, gpuMs, signal, (samples) =>
-          onProgress({ phase: "gpu", overall: at(base + samples.length * 1000), gpuSamples: samples }),
-        );
-        gpu = { tested: true, ...stress };
-        const target = vramTargetMb;
-        onProgress({ phase: "vram", overall: at(base + gpuMs), vramMb: 0, vramTarget: target });
-        vram = await memoryTest(gpuDevice, adapter!, target, signal, (mb) =>
-          onProgress({ phase: "vram", overall: at(base + gpuMs + (mb / target) * memoryMs), vramMb: mb, vramTarget: target }),
-        );
-      } catch (error) {
-        if (signal.aborted) throw error;
-        const reason = lost ?? "Видеокартата спря да отговаря по време на теста.";
-        gpu = { ...gpu, tested: true, reason };
-        vram = { ...vram, tested: vram.tested, reason: vram.reason ?? reason };
-      } finally {
-        gpuDevice.destroy();
-      }
-    }
-
-    onVisibility();
-    return { cpu, gpu, vram, hiddenMs: Math.round(hiddenMs), durationMs: Math.round(performance.now() - started) };
-  } finally {
-    document.removeEventListener("visibilitychange", onVisibility);
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  let start = f32(id.x & 255u) * (1.0 / 2048.0);
+  var a = start;
+  var b = start + 0.01;
+  var c = start + 0.02;
+  var d = start + 0.03;
+  for (var i = 0u; i < params.iterations; i++) {
+    a = fma(a, a, 0.109375); b = fma(b, b, 0.05859375); c = fma(c, c, 0.0849609375); d = fma(d, d, 0.0302734375);
+    a = fma(a, a, 0.109375); b = fma(b, b, 0.05859375); c = fma(c, c, 0.0849609375); d = fma(d, d, 0.0302734375);
+    a = fma(a, a, 0.109375); b = fma(b, b, 0.05859375); c = fma(c, c, 0.0849609375); d = fma(d, d, 0.0302734375);
+    a = fma(a, a, 0.109375); b = fma(b, b, 0.05859375); c = fma(c, c, 0.0849609375); d = fma(d, d, 0.0302734375);
   }
+  out[id.x] = a + b + c + d;
+}`;
+const FLOPS_PER_ITERATION = 4 * 4 * 2;
+const FLOPS_EXPECTED = 0.3125;
+
+const median = (values: number[]) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted.length ? sorted[sorted.length >> 1] : 0;
+};
+
+export async function flopsTest(device: GPUDevice, durationMs: number, signal: AbortSignal, onRate: (flops: number) => void) {
+  const shader = device.createShaderModule({ code: FLOPS });
+  const pipeline = device.createComputePipeline({ layout: "auto", compute: { module: shader, entryPoint: "main" } });
+  const out = device.createBuffer({ size: INVOCATIONS * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+  const read = device.createBuffer({ size: INVOCATIONS * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+  const params = device.createBuffer({ size: 8, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const bind = device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(0),
+    entries: [
+      { binding: 0, resource: { buffer: out } },
+      { binding: 1, resource: { buffer: params } },
+    ],
+  });
+  const dispatch = async (iterations: number, copy: boolean) => {
+    device.queue.writeBuffer(params, 0, new Uint32Array([iterations, 0]));
+    const encoder = device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bind);
+    pass.dispatchWorkgroups(GROUPS);
+    pass.end();
+    if (copy) encoder.copyBufferToBuffer(out, 0, read, 0, INVOCATIONS * 4);
+    const started = performance.now();
+    device.queue.submit([encoder.finish()]);
+    await device.queue.onSubmittedWorkDone();
+    return performance.now() - started;
+  };
+
+  let iterations = 64;
+  for (let i = 0; i < 5; i++) {
+    const ms = await dispatch(iterations, false);
+    iterations = Math.min(1 << 18, Math.max(64, Math.round((iterations * TARGET_DISPATCH_MS) / Math.max(ms, 0.25))));
+  }
+
+  const rates: number[] = [];
+  let checked = 0;
+  let errors = 0;
+  let lastCheck = 0;
+  const end = performance.now() + durationMs;
+  while (performance.now() < end) {
+    if (signal.aborted) throw stopped();
+    const verify = performance.now() - lastCheck > 1000;
+    const ms = await dispatch(iterations, verify);
+    rates.push((INVOCATIONS * iterations * FLOPS_PER_ITERATION) / (ms / 1000));
+    onRate(median(rates));
+    if (verify) {
+      lastCheck = performance.now();
+      await read.mapAsync(GPUMapMode.READ);
+      const values = new Float32Array(read.getMappedRange().slice(0));
+      read.unmap();
+      for (let k = 0; k < 64; k++) {
+        if (Math.abs(values[Math.floor(Math.random() * INVOCATIONS)] - FLOPS_EXPECTED) > 1e-6) errors++;
+      }
+      checked++;
+    }
+  }
+  [out, read, params].forEach((b) => b.destroy());
+  return { flops: median(rates), checked, errors };
+}
+
+// ── Memory bandwidth ─────────────────────────────────────────────────────────
+
+const COPY = /* wgsl */ `
+struct Params { count: u32, key: u32 };
+@group(0) @binding(0) var<storage, read> src: array<vec4<u32>>;
+@group(0) @binding(1) var<storage, read_write> dst: array<vec4<u32>>;
+@group(0) @binding(2) var<uniform> params: Params;
+const THREADS: u32 = 1048576u;
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  for (var i = id.x; i < params.count; i += THREADS) { dst[i] = src[i] ^ vec4<u32>(params.key); }
+}`;
+
+const pattern = (i: number) => (Math.imul(i ^ 0x5bd1e995, 747796405) + 2891336453) >>> 0;
+
+/** Copies a block far larger than the card's cache back and forth: how fast its memory really is. */
+export async function bandwidthTest(device: GPUDevice, adapter: GPUAdapter, durationMs: number, signal: AbortSignal, onRate: (bytesPerSec: number) => void) {
+  const bytes = Math.floor(Math.min(256 * MB, adapter.limits.maxStorageBufferBindingSize, adapter.limits.maxBufferSize) / 16) * 16;
+  const count = bytes / 16;
+  const src = device.createBuffer({ size: bytes, usage: GPUBufferUsage.STORAGE, mappedAtCreation: true });
+  const words = new Uint32Array(src.getMappedRange());
+  for (let i = 0; i < words.length; i++) words[i] = pattern(i);
+  src.unmap();
+  const dst = device.createBuffer({ size: bytes, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+  const sample = 64 * 1024;
+  const read = device.createBuffer({ size: sample, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+  const params = device.createBuffer({ size: 8, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const shader = device.createShaderModule({ code: COPY });
+  const pipeline = device.createComputePipeline({ layout: "auto", compute: { module: shader, entryPoint: "main" } });
+  const bind = device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(0),
+    entries: [
+      { binding: 0, resource: { buffer: src } },
+      { binding: 1, resource: { buffer: dst } },
+      { binding: 2, resource: { buffer: params } },
+    ],
+  });
+
+  const batch = async (key: number, copyFrom: number | null) => {
+    device.queue.writeBuffer(params, 0, new Uint32Array([count, key]));
+    const encoder = device.createCommandEncoder();
+    for (let i = 0; i < 4; i++) {
+      const pass = encoder.beginComputePass();
+      pass.setPipeline(pipeline);
+      pass.setBindGroup(0, bind);
+      pass.dispatchWorkgroups(4096);
+      pass.end();
+    }
+    if (copyFrom !== null) encoder.copyBufferToBuffer(dst, copyFrom, read, 0, sample);
+    const started = performance.now();
+    device.queue.submit([encoder.finish()]);
+    await device.queue.onSubmittedWorkDone();
+    return performance.now() - started;
+  };
+
+  await batch(1, null);
+  const rates: number[] = [];
+  let errors = 0;
+  let lastCheck = 0;
+  const end = performance.now() + durationMs;
+  while (performance.now() < end) {
+    if (signal.aborted) throw stopped();
+    const key = (Math.random() * 4294967296) >>> 0;
+    const verify = performance.now() - lastCheck > 700;
+    const offset = verify ? Math.floor((Math.random() * (bytes - sample)) / 16) * 16 : null;
+    const ms = await batch(key, offset);
+    // Four copies, each reads the block once and writes it once.
+    rates.push((bytes * 2 * 4) / (ms / 1000));
+    onRate(median(rates));
+    if (offset !== null) {
+      lastCheck = performance.now();
+      await read.mapAsync(GPUMapMode.READ);
+      const got = new Uint32Array(read.getMappedRange().slice(0));
+      read.unmap();
+      const first = offset / 4;
+      for (let k = 0; k < got.length; k += 97) if (got[k] !== (pattern(first + k) ^ key) >>> 0) errors++;
+    }
+  }
+  [src, dst, read, params].forEach((b) => b.destroy());
+  return { bandwidth: median(rates), errors };
 }

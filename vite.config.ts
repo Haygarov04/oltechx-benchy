@@ -6,5 +6,6 @@ export default defineConfig({
   root: "src/renderer",
   base: "./",
   plugins: [react()],
-  build: { outDir: "../../dist/renderer", emptyOutDir: true, target: "chrome130" },
+  // Not minified: the test workers are built from function source text, and the app size does not matter here.
+  build: { outDir: "../../dist/renderer", emptyOutDir: true, target: "chrome130", minify: false },
 });

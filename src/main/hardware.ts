@@ -6,7 +6,8 @@ import type { DetectedPart, Hardware } from "../shared/types";
 
 /**
  * The parts as the operating system reports them. Names are kept exactly as Windows shows them;
- * the site matches them to its catalog. Nothing personal is read: no user name, files or serial numbers.
+ * the site matches them to its catalog. Factory serial numbers are read against scams: the site keeps only a
+ * fingerprint and the last 4 characters. Nothing personal is read: no user name, files or accounts.
  * Health labels stay in Bulgarian because the site displays them; the app translates them for display.
  */
 
@@ -72,6 +73,42 @@ function platformName(distro: string, release: string) {
   return name || release;
 }
 
+/** Placeholder serials that makers leave in cheap or custom systems. */
+const NO_SERIAL = /^(to be filled.*|default string|system serial number|chassis serial number|not specified|not applicable|none|n\/a|unknown|0+|1234567890?|x+|\.+|-+)$/i;
+
+/** A real factory serial, or null. */
+export function cleanSerial(value: string | null | undefined): string | null {
+  const serial = (value ?? "").replace(/[\s\0]+/g, " ").trim();
+  if (serial.length < 4 || serial.length > 64 || NO_SERIAL.test(serial) || /o\.?e\.?m/i.test(serial)) return null;
+  return serial;
+}
+
+/** NVIDIA cards report their serial (or at least a unique id) through the driver tool. */
+async function nvidiaSerial(): Promise<string | null> {
+  try {
+    const { stdout } = await run("nvidia-smi", ["--query-gpu=serial,uuid", "--format=csv,noheader"], { timeout: 4000, windowsHide: true });
+    const [serial, uuid] = stdout.split("\n")[0].split(",").map((s) => s.trim());
+    return cleanSerial(serial) ?? cleanSerial(uuid);
+  } catch {
+    return null;
+  }
+}
+
+/** Temperatures during the test. Only what is cheap to read: the test must not be slowed down by it. */
+export async function readTemps(): Promise<{ cpu: number | null; gpu: number | null }> {
+  const valid = (t: unknown) => (typeof t === "number" && t > 15 && t < 125 ? Math.round(t) : null);
+  // On Windows the processor temperature needs administrator rights, so only the NVIDIA card is read there.
+  const cpu = process.platform === "win32" ? null : valid((await si.cpuTemperature().catch(() => null))?.main);
+  let gpu: number | null = null;
+  try {
+    const { stdout } = await run("nvidia-smi", ["--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"], { timeout: 2000, windowsHide: true });
+    gpu = valid(Number(stdout.split("\n")[0]));
+  } catch {
+    // No NVIDIA card or no driver tool.
+  }
+  return { cpu, gpu };
+}
+
 function diskKind(disk: si.Systeminformation.DiskLayoutData): "NVMe SSD" | "SATA SSD" | "HDD" {
   if (/nvme|pcie/i.test(disk.interfaceType) || /nvme/i.test(disk.name)) return "NVMe SSD";
   if (disk.type === "SSD" || /ssd/i.test(disk.name)) return "SATA SSD";
@@ -120,6 +157,7 @@ export async function scanHardware(): Promise<Hardware> {
     parts.push({
       slot: "gpu",
       name: gpu.model.replace(/\s+/g, " ").trim(),
+      serial: /nvidia/i.test(gpu.vendor) ? await nvidiaSerial() : null,
       specs: { vramGb: vramMb ? Math.round(vramMb / 1024) : null, driver: gpu.driverVersion || null, vendor: gpu.vendor || null },
       health: typeof gpu.temperatureGpu === "number" ? { label: "Температура", value: `${Math.round(gpu.temperatureGpu)} °C`, ok: gpu.temperatureGpu < 85 } : null,
     });
@@ -135,11 +173,13 @@ export async function scanHardware(): Promise<Hardware> {
     slot: "ram",
     name: `${makers.length === 1 ? `${makers[0]} ` : ""}${modules.length > 1 ? `${modules.length}×${Math.round(modules[0].size / GB)} GB` : `${capacityGb} GB`} ${types[0] ?? ""}`.replace(/\s+/g, " ").trim(),
     specs: { ddr: types[0]?.toUpperCase() ?? null, capacityGb, modules: modules.length || null, speedMhz: speeds.length ? Math.min(...speeds) : null },
+    // A kit is identified by all its modules together.
+    serial: cleanSerial(modules.map((m) => cleanSerial(m.serialNum)).filter(Boolean).sort().join(" / ")),
   });
 
   // The motherboard is sold separately only from a desktop.
   if (!laptop && board?.model && !/to be filled|default string|system product/i.test(board.model)) {
-    parts.push({ slot: "motherboard", name: `${board.manufacturer} ${board.model}`.replace(/\s+/g, " ").trim(), specs: { formFactor: null } });
+    parts.push({ slot: "motherboard", name: `${board.manufacturer} ${board.model}`.replace(/\s+/g, " ").trim(), specs: { formFactor: null }, serial: cleanSerial(board.serial) });
   }
 
   // Internal drives only, no USB sticks or external disks.
@@ -149,6 +189,7 @@ export async function scanHardware(): Promise<Hardware> {
       name: disk.name.replace(/\s+/g, " ").trim() || `${diskKind(disk)} ${Math.round(disk.size / 1e9)} GB`,
       specs: { kind: diskKind(disk), capacityGb: Math.round(disk.size / 1e9) },
       health: smart(disk.smartStatus),
+      serial: cleanSerial(disk.serialNum),
     });
   }
 
@@ -159,6 +200,7 @@ export async function scanHardware(): Promise<Hardware> {
       slot: "battery",
       name: (battery.manufacturer || battery.model || "Battery").trim(),
       specs: { healthPct: Math.round(health), cycles: battery.cycleCount || null },
+      serial: cleanSerial(battery.serial),
       health: { label: "Капацитет", value: `${Math.round(health)}%`, ok: health >= 80 },
     });
   }
@@ -188,6 +230,8 @@ export async function scanHardware(): Promise<Hardware> {
     // Macs and laptops are sold whole: their parts are soldered in.
     wholeOnly: laptop || mac,
     vramMb,
+    // The serial of the whole computer: on the sticker and in the system settings of laptops, Macs and ready-made PCs.
+    serial: model ? cleanSerial(system?.serial) : null,
     deviceName: `${hostname()} · ${platform}`.slice(0, 80),
   };
 }

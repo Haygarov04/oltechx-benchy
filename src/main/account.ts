@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { app, safeStorage } from "electron";
-import type { Account, CheckResults, DetectedPart, DeviceInfo, Uploaded } from "../shared/types";
+import type { Account, Uploaded, UploadPayload } from "../shared/types";
 
 /**
  * The link to the OLTechX site. The token is encrypted by the OS (DPAPI on Windows, Keychain on macOS).
@@ -138,7 +138,7 @@ export function cancelPairing() {
   polling = null;
 }
 
-export async function upload(payload: { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults }): Promise<Uploaded | Failure> {
+export async function upload(payload: UploadPayload): Promise<Uploaded | Failure> {
   if (!token) return { error: "error.notConnected" };
   try {
     const { status, data } = await call("/api/device/checks", { body: payload, auth: true });

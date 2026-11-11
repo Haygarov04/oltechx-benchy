@@ -1,91 +1,51 @@
-import { CameraIcon, CpuIcon, ExternalLinkIcon, GaugeIcon, Loader2Icon, MemoryStickIcon, PlugZapIcon, PlusIcon, RotateCcwIcon, ShieldAlertIcon, ShieldCheckIcon } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import {
+  CameraIcon,
+  CpuIcon,
+  ExternalLinkIcon,
+  FingerprintIcon,
+  Loader2Icon,
+  MemoryStickIcon,
+  MonitorIcon,
+  PlugZapIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  ShieldAlertIcon,
+  ShieldCheckIcon,
+  TimerIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Account, CheckResults, Hardware, Uploaded } from "../shared/types";
 import { AccountCard } from "./components/account-card";
 import { LogoMark } from "./components/logo-mark";
+import { Gallery } from "./components/gallery";
+import { LiveModel } from "./components/model-view";
 import { PartCard } from "./components/part-card";
-import { Scope } from "./components/scope";
-import { type Phase, type Progress, runCheck } from "./engine";
-import { formatRate, SELLABLE } from "./format";
+import { Results } from "./components/results";
+import { STAGE_META, TestBench } from "./components/test-bench";
+import { type Progress, runCheck, STAGES } from "./engine";
+import { SELLABLE } from "./format";
 import { errorKey, type Lang, LangProvider, useLang } from "./i18n";
+import { ThemeSwitch } from "./theme";
 
 type Stage =
   | { kind: "home" }
   | { kind: "test"; progress: Progress; startedAt: number }
   | { kind: "done"; results: CheckResults; uploaded: (Uploaded & { passed?: boolean; problems?: string[] }) | null; error: string | null; uploading: boolean };
 
-const STATIONS = [
-  { phase: "cpu", label: "stationCpu", Icon: CpuIcon },
-  { phase: "gpu", label: "stationGpu", Icon: GaugeIcon },
-  { phase: "vram", label: "stationVram", Icon: MemoryStickIcon },
-] as const satisfies readonly { phase: Phase; label: string; Icon: typeof CpuIcon }[];
-
 /** How much graphics memory to verify: half of it, up to 4 GB, so the system stays responsive. */
 const vramTarget = (hardware: Hardware) => (hardware.vramMb && hardware.vramMb >= 2048 ? Math.min(4096, Math.floor(hardware.vramMb / 2 / 256) * 256) : 1024);
 
-function TestBoard({ progress, startedAt }: { progress: Progress; startedAt: number }) {
-  const { t, lang } = useLang();
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(timer);
-  }, []);
-  const current = STATIONS.findIndex((s) => s.phase === progress.phase);
-  const elapsed = (now - startedAt) / 1000;
-  const remaining = progress.overall > 0.05 ? Math.max(1, Math.round((elapsed * (1 - progress.overall)) / progress.overall)) : null;
-  const value = (phase: Phase) => {
-    if (phase === "cpu") return progress.cpuRate ? formatRate(progress.cpuRate, lang) : "…";
-    if (phase === "gpu") return progress.gpuSamples?.length ? formatRate(progress.gpuSamples.at(-1)!, lang) : t("warming");
-    return progress.vramTarget ? `${Math.round(progress.vramMb ?? 0)} / ${progress.vramTarget} MB` : "…";
-  };
-  return (
-    <div className="board" style={{ display: "grid", gap: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="display h2">{current >= 0 ? t(STATIONS[current].label) : t("check")}</div>
-        <div className="mono muted">{remaining ? t("remaining", { s: remaining }) : t("starting")}</div>
-      </div>
-      <span className="meter" role="progressbar" aria-valuenow={Math.round(progress.overall * 100)} style={{ "--fill": `${Math.round(progress.overall * 100)}%` } as CSSProperties} />
-      <div className="bus" />
-      <div className="stations">
-        {STATIONS.map(({ phase, label, Icon }, i) => {
-          const state = i < current ? "done" : i === current ? "active" : "pending";
-          return (
-            <div key={phase} className="station" data-state={state}>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <Icon aria-hidden="true" size={18} color="var(--muted)" />
-                <span className="led" />
-              </div>
-              <div className="silk" style={{ marginTop: 8 }}>
-                {t(label)}
-              </div>
-              <div className="station-value">{state === "pending" ? t("waiting") : value(phase)}</div>
-              <div className="muted" style={{ fontSize: 12 }}>
-                {phase === "vram" ? t("verified") : t("perSecond")}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div>
-        <div className="row silk" style={{ justifyContent: "space-between" }}>
-          <span>{t("underLoad")}</span>
-          <span>{progress.gpuSamples?.length ?? 0} / 30 s</span>
-        </div>
-        <Scope samples={progress.gpuSamples ?? []} live={progress.phase === "gpu"} label={t("underLoad")} />
-      </div>
-      <div className="muted" style={{ fontSize: 14 }}>
-        {t("dontClose")}
-      </div>
-    </div>
-  );
-}
+/** How much RAM to verify: a fifth of it, between 512 MB and 2 GB. */
+const ramTarget = (hardware: Hardware) => Math.max(512, Math.min(2048, Math.floor(((hardware.device.memoryGb ?? 8) * 1024 * 0.2) / 256) * 256));
+
+const startProgress: Progress = { stage: "cpu", overall: 0, live: null, unit: null, samples: [], skipped: [], results: {} };
 
 function LangSwitch() {
   const { lang, setLang } = useLang();
   return (
-    <div className="row" role="group" aria-label="Language" style={{ gap: 4 }}>
+    <div className="segmented" role="group" aria-label="Language">
       {(["bg", "en"] as Lang[]).map((option) => (
-        <button key={option} type="button" className={`btn ${lang === option ? "btn-primary" : "btn-ghost"}`} style={{ height: 30, padding: "0 10px", fontSize: 13 }} aria-pressed={lang === option} onClick={() => setLang(option)}>
+        <button key={option} type="button" aria-pressed={lang === option} onClick={() => setLang(option)}>
           {option.toUpperCase()}
         </button>
       ))}
@@ -94,15 +54,17 @@ function LangSwitch() {
 }
 
 export function App() {
-  return (
-    <LangProvider>
-      <Check />
-    </LangProvider>
-  );
+  const [gallery, setGallery] = useState(() => location.hash === "#models");
+  useEffect(() => {
+    const onHash = () => setGallery(location.hash === "#models");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return <LangProvider>{gallery ? <Gallery /> : <Check />}</LangProvider>;
 }
 
 function Check() {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const [hardware, setHardware] = useState<Hardware | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [stage, setStage] = useState<Stage>({ kind: "home" });
@@ -119,7 +81,7 @@ function Check() {
     async (results: CheckResults) => {
       if (!hardware) return;
       setStage((s) => (s.kind === "done" ? { ...s, uploading: true, error: null } : s));
-      const uploaded = await window.olx.upload({ device: hardware.device, parts: hardware.parts, results });
+      const uploaded = await window.olx.upload({ device: hardware.device, parts: hardware.parts, results, serial: hardware.serial });
       setStage((s) =>
         s.kind === "done" ? { ...s, uploading: false, uploaded: "error" in uploaded ? null : uploaded, error: "error" in uploaded ? uploaded.error : null } : s,
       );
@@ -141,10 +103,15 @@ function Check() {
     const controller = new AbortController();
     abort.current = controller;
     setChosen([]);
-    setStage({ kind: "test", progress: { phase: "cpu", overall: 0 }, startedAt: Date.now() });
+    setStage({ kind: "test", progress: startProgress, startedAt: Date.now() });
     await window.olx.keepAwake(true);
     try {
-      const results = await runCheck(controller.signal, (p) => setStage((s) => (s.kind === "test" ? { ...s, progress: { ...s.progress, ...p } } : s)), vramTarget(hardware));
+      const results = await runCheck(controller.signal, (progress) => setStage((s) => (s.kind === "test" ? { ...s, progress } : s)), {
+        vramTargetMb: vramTarget(hardware),
+        ramTestMb: ramTarget(hardware),
+        disk: () => window.olx.diskTest(),
+        temps: () => window.olx.temps(),
+      });
       setStage({ kind: "done", results, uploaded: null, error: null, uploading: false });
       if (account?.connected) await send(results);
     } catch {
@@ -155,32 +122,35 @@ function Check() {
   }
 
   const sellable = hardware?.parts.map((p, i) => ({ p, i })).filter(({ p }) => SELLABLE.includes(p.slot)) ?? [];
+  const mac = hardware?.device.platform?.startsWith("macOS") ?? false;
 
   return (
     <div className="app">
       <header className="topbar">
         <LogoMark className="logo" />
         <span className="title">{t("appTitle")}</span>
-        <span style={{ marginLeft: "auto" }} className="muted">
-          {account?.connected ? t("connectedAs", { name: account.userName }) : t("notConnected")}
+        <span style={{ marginLeft: "auto" }} className="pill" data-on={account?.connected === true}>
+          <span className="dot" />
+          {account?.connected ? (account.userName ? t("connectedAs", { name: account.userName }) : t("connected")) : t("notConnected")}
         </span>
+        <ThemeSwitch />
         <LangSwitch />
       </header>
 
       <main className="main">
         {stage.kind === "home" && (
           <>
-            <div>
+            <div className="rise">
               <div className="silk">{t("eyebrow")}</div>
               <h1 className="display h1" style={{ marginTop: 6 }}>
-                {t(hardware?.device.platform?.startsWith("macOS") ? "homeTitleMac" : "homeTitle")}
+                {t(mac ? "homeTitleMac" : "homeTitle")}
               </h1>
-              <p className="muted" style={{ maxWidth: 640, fontSize: 17 }}>
+              <p className="muted" style={{ maxWidth: 680, fontSize: 17, margin: "10px 0 0" }}>
                 {t("homeText")}
               </p>
             </div>
             <div className="grid2">
-              <div style={{ display: "grid", gap: 12 }}>
+              <div className="stack">
                 {scanError && <div className="alert alert-error">{t("scanFailed")}</div>}
                 {!hardware && !scanError && (
                   <div className="row muted">
@@ -188,11 +158,44 @@ function Check() {
                   </div>
                 )}
                 {hardware && (
-                  <div className="card row" style={{ padding: "14px 18px" }}>
-                    <div>
-                      <div className="silk">{t("computer")}</div>
-                      <div style={{ fontWeight: 700, fontSize: 20 }}>{hardware.computerName ?? t("customBuild")}</div>
-                      {hardware.wholeOnly && <div className="muted" style={{ fontSize: 13 }}>{t("wholeOnlyHint")}</div>}
+                  <div className="card plate rise">
+                    <div className="plate-model">
+                      <LiveModel source={{ hardware }} label={hardware.computerName ?? t("customBuild")} />
+                    </div>
+                    <div className="plate-text">
+                    <div className="silk">{t("computer")}</div>
+                    <div className="plate-name">{hardware.computerName ?? t("customBuild")}</div>
+                    <div className="specs-line">
+                      {hardware.device.platform && (
+                        <span className="chip">
+                          <MonitorIcon aria-hidden="true" />
+                          {hardware.device.platform}
+                        </span>
+                      )}
+                      {hardware.device.threads && (
+                        <span className="chip">
+                          <CpuIcon aria-hidden="true" />
+                          {t("threads", { n: hardware.device.threads })}
+                        </span>
+                      )}
+                      {hardware.device.memoryGb && (
+                        <span className="chip">
+                          <MemoryStickIcon aria-hidden="true" />
+                          {hardware.device.memoryGb} GB RAM
+                        </span>
+                      )}
+                      {hardware.parts.some((p) => p.serial) && (
+                        <span className="chip" title={t("serialsHint")}>
+                          <FingerprintIcon aria-hidden="true" />
+                          {t("serialsChip")}
+                        </span>
+                      )}
+                    </div>
+                    {hardware.wholeOnly && (
+                      <p className="muted" style={{ fontSize: 14, margin: "10px 0 0" }}>
+                        {t("wholeOnlyHint")}
+                      </p>
+                    )}
                     </div>
                   </div>
                 )}
@@ -203,41 +206,62 @@ function Check() {
                     ))}
                   </div>
                 )}
-                {hardware?.onPower === false && (
-                  <div className="alert alert-warn row">
-                    <PlugZapIcon aria-hidden="true" size={18} /> {t("plugIn")}
-                  </div>
+                {hardware?.parts.some((p) => p.serial) && (
+                  <p className="muted row" style={{ fontSize: 13.5, alignItems: "flex-start" }}>
+                    <FingerprintIcon aria-hidden="true" size={16} style={{ flex: "none", marginTop: 2 }} />
+                    {t("serialsHint")}
+                  </p>
                 )}
-                <div>
-                  <button type="button" className="btn btn-primary btn-lg" disabled={!hardware} onClick={() => void start()}>
+              </div>
+
+              <div className="stack">
+                <div className="card rise" style={{ animationDelay: "60ms" }}>
+                  <div className="row" style={{ justifyContent: "space-between" }}>
+                    <div className="display h2">{t("startTitle")}</div>
+                    <span className="chip">
+                      <TimerIcon aria-hidden="true" />
+                      {t("startTime")}
+                    </span>
+                  </div>
+                  <ul className="start-list">
+                    {STAGES.map((id) => {
+                      const { Icon } = STAGE_META[id];
+                      return (
+                        <li key={id}>
+                          <Icon aria-hidden="true" />
+                          {t(`stage_${id}`)}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {hardware?.onPower === false && (
+                    <div className="alert alert-warn row" style={{ marginBottom: 12 }}>
+                      <PlugZapIcon aria-hidden="true" size={18} /> {t("plugIn")}
+                    </div>
+                  )}
+                  <button type="button" className="btn btn-primary btn-xl" disabled={!hardware} onClick={() => void start()}>
                     <ShieldCheckIcon aria-hidden="true" />
                     {t("start")}
                   </button>
                 </div>
+                <AccountCard account={account} onChange={onAccount} />
               </div>
-              <AccountCard account={account} onChange={onAccount} />
             </div>
           </>
         )}
 
-        {stage.kind === "test" && <TestBoard progress={stage.progress} startedAt={stage.startedAt} />}
+        {stage.kind === "test" && hardware && <TestBench progress={stage.progress} startedAt={stage.startedAt} hardware={hardware} />}
 
         {stage.kind === "done" && hardware && (
           <>
-            <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div className="row rise" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
               <div className="hero">
-                <span className={`die ${stage.uploaded?.passed === false ? "die-bad" : "die-ok"}`}>
+                <span className={`verdict ${stage.uploaded ? (stage.uploaded.passed === false ? "verdict-bad" : "verdict-ok") : "verdict-wait"}`}>
                   {stage.uploaded?.passed === false ? <ShieldAlertIcon aria-hidden="true" /> : <ShieldCheckIcon aria-hidden="true" />}
                 </span>
                 <div>
                   <h1 className="display h1">{stage.uploaded ? (stage.uploaded.passed === false ? t("failed") : t("passed")) : t("testDone")}</h1>
-                  <div className="muted">
-                    {t("summary", {
-                      cpu: formatRate(stage.results.cpu.multi, lang),
-                      gpu: stage.results.gpu.tested ? t("rate", { value: formatRate(stage.results.gpu.opsPerSec, lang) }) : t("gpuNotTested"),
-                      errors: stage.results.cpu.errors + stage.results.gpu.errors + stage.results.vram.errors,
-                    })}
-                  </div>
+                  <div className="muted">{hardware.computerName ?? hardware.parts.find((p) => p.slot === "cpu")?.name}</div>
                 </div>
               </div>
               {stage.uploaded && (
@@ -283,29 +307,29 @@ function Check() {
             )}
 
             {stage.uploaded && (
-              <>
+              <div className="card stack rise">
                 <div className="row" style={{ gap: 8 }}>
                   <CameraIcon aria-hidden="true" size={18} color="var(--primary)" />
                   <span>{t("photoHint")}</span>
                 </div>
                 {/* Macs and laptops have soldered parts, so the whole device is sold. */}
                 {!hardware.wholeOnly && (
-                <div>
-                  <div className="display h2" style={{ marginBottom: 10 }}>
-                    {t("whatSelling")}
+                  <div>
+                    <div className="display h3" style={{ marginBottom: 10 }}>
+                      {t("whatSelling")}
+                    </div>
+                    <div className="parts">
+                      {sellable.map(({ p, i }) => (
+                        <PartCard
+                          key={`${p.slot}-${i}`}
+                          part={p}
+                          index={i}
+                          on={chosen.includes(i)}
+                          onToggle={() => setChosen((list) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]))}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="parts">
-                    {sellable.map(({ p, i }) => (
-                      <PartCard
-                        key={`${p.slot}-${i}`}
-                        part={p}
-                        index={i}
-                        on={chosen.includes(i)}
-                        onToggle={() => setChosen((list) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]))}
-                      />
-                    ))}
-                  </div>
-                </div>
                 )}
                 <div className="row" style={{ flexWrap: "wrap" }}>
                   <button type="button" className="btn btn-primary btn-lg" onClick={() => void window.olx.open(`${stage.uploaded!.sellUrl}&chasti=all`)}>
@@ -327,8 +351,10 @@ function Check() {
                     {t("viewOnSite")}
                   </button>
                 </div>
-              </>
+              </div>
             )}
+
+            <Results results={stage.results} hardware={hardware} />
 
             <div>
               <button type="button" className="btn btn-ghost" onClick={() => setStage({ kind: "home" })}>

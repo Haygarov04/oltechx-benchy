@@ -18,17 +18,52 @@ export type PartSlot = "cpu" | "gpu" | "ram" | "motherboard" | "storage" | "batt
 export type DetectedPart = {
   slot: PartSlot;
   name: string;
+  /** The factory serial number. The site stores only a fingerprint and the last 4 characters. */
+  serial?: string | null;
   specs: Record<string, string | number | boolean | null>;
   health?: { label: string; value: string; ok: boolean } | null;
 };
 
+/** Rates are per second: operations, floating point operations (FLOPS) or bytes. */
 export type CheckResults = {
-  cpu: { threads: number; single: number; multi: number; checked: number; errors: number };
-  gpu: { tested: boolean; reason?: string; opsPerSec: number; samples: number[]; checked: number; errors: number };
+  cpu: {
+    threads: number;
+    /** Integer operations per second on one core and on all cores. */
+    single: number;
+    multi: number;
+    checked: number;
+    errors: number;
+    /** All cores, second by second: a falling line means the processor slows down when it gets hot. */
+    samples?: number[];
+    /** Double precision matrix multiply, FLOPS. */
+    float?: { single: number; multi: number; errors: number };
+    /** SHA-256 on all cores, bytes per second. */
+    hash?: number;
+    /** Deflate compression on all cores, bytes per second. */
+    compress?: number;
+  };
+  gpu: {
+    tested: boolean;
+    reason?: string;
+    opsPerSec: number;
+    samples: number[];
+    checked: number;
+    errors: number;
+    /** FP32 throughput, FLOPS. */
+    flops?: number;
+    /** Memory bandwidth, bytes per second. */
+    bandwidth?: number;
+  };
   vram: { tested: boolean; reason?: string; testedMb: number; errors: number };
+  ram?: { bandwidth: number; latencyNs: number; testedMb: number; errors: number };
+  disk?: DiskResults;
+  temps?: { cpuMax: number | null; gpuMax: number | null };
   hiddenMs: number;
   durationMs: number;
 };
+
+/** The system drive: sequential writes and small random writes, both flushed to the drive. */
+export type DiskResults = { tested: boolean; reason?: string; write: number; iops: number; testedMb: number };
 
 export type Hardware = {
   device: DeviceInfo;
@@ -42,7 +77,11 @@ export type Hardware = {
   wholeOnly: boolean;
   vramMb: number | null;
   deviceName: string;
+  /** The serial number of the whole computer (laptops, Macs, ready-made PCs). */
+  serial: string | null;
 };
+
+export type UploadPayload = { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults; serial: string | null };
 
 export type Account = { connected: false } | { connected: true; userName: string; remember: boolean };
 
@@ -57,7 +96,11 @@ export type Bridge = {
   cancelConnect: () => Promise<void>;
   logout: () => Promise<void>;
   onAccount: (listener: (account: Account | { error: string }) => void) => () => void;
-  upload: (payload: { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults }) => Promise<Uploaded | { error: string }>;
+  upload: (payload: UploadPayload) => Promise<Uploaded | { error: string }>;
+  /** Writes about 1 GB to the system drive and deletes it. */
+  diskTest: () => Promise<DiskResults>;
+  /** Current temperatures in °C, null where the system does not report them. */
+  temps: () => Promise<{ cpu: number | null; gpu: number | null }>;
   open: (url: string) => Promise<void>;
   keepAwake: (on: boolean) => Promise<void>;
   siteUrl: () => Promise<string>;

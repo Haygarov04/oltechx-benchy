@@ -1,8 +1,11 @@
-/** Graphics speed second by second. A flat line means it does not throttle from heat. */
+import { useId } from "react";
+
+/** Speed second by second. A flat line means no slowdown from heat. */
 export function Scope({ samples, slots = 30, live = false, label }: { samples: number[]; slots?: number; live?: boolean; label: string }) {
   const width = 300;
   const height = 90;
   const max = Math.max(...samples, 1) * 1.18;
+  const id = useId().replace(/:/g, "");
   const step = width / Math.max(slots - 1, samples.length - 1, 1);
   const points = samples.map((value, i) => [i * step, height - (value / max) * height] as const);
   const line = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
@@ -10,7 +13,7 @@ export function Scope({ samples, slots = 30, live = false, label }: { samples: n
   return (
     <svg className="scope" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label}>
       <defs>
-        <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: "var(--primary)", stopOpacity: 0.22 }} />
           <stop offset="1" style={{ stopColor: "var(--primary)", stopOpacity: 0 }} />
         </linearGradient>
@@ -20,7 +23,7 @@ export function Scope({ samples, slots = 30, live = false, label }: { samples: n
       ))}
       {points.length > 1 && (
         <>
-          <polygon points={`0,${height} ${line} ${points.at(-1)![0].toFixed(1)},${height}`} fill="url(#fill)" />
+          <polygon points={`0,${height} ${line} ${points.at(-1)![0].toFixed(1)},${height}`} fill={`url(#${id})`} />
           <polyline points={line} fill="none" strokeWidth="2" vectorEffect="non-scaling-stroke" className="scope-line" style={{ stroke: "var(--primary)" }} />
         </>
       )}

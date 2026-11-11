@@ -2,11 +2,20 @@
 
 A Windows and macOS app that checks a computer before you sell it on [OLTechX](https://www.oltechx.com), the Bulgarian marketplace for tech.
 
-- Detects the processor, graphics card, RAM modules, motherboard, drives (with SMART health) and laptop battery.
-- Loads the processor and graphics card and verifies every result against the known answer, so unstable hardware is caught, not just slow hardware.
-- Writes a pattern into graphics memory and checks every cell for errors.
-- Uploads the result to your account and fills in the listing: the whole PC, a single part or a bundle.
-- Bulgarian and English. The first start follows the Windows language; switch any time in the header.
+- Detects the computer model (for example "MacBook Air (15-inch, M5)" or "Lenovo Legion 5"), the processor, graphics card,
+  RAM modules, motherboard, drives (with SMART health) and laptop battery, with 3D models of each part.
+- Measures real performance in about two minutes, and verifies every result against the known answer, so unstable
+  hardware is caught, not just slow hardware:
+  - processor: integers on one and all cores, double precision matrix math, SHA-256 and compression, and whether it
+    slows down when hot;
+  - RAM: bandwidth, latency and a pattern test that reads back every cell;
+  - graphics card: a 20 second stress test, FP32 compute, memory bandwidth and a graphics memory error test;
+  - system drive: sequential writes (up to 1 GB, flushed to the drive, then deleted) and random 4 KB writes.
+- Reads factory serial numbers against scams. The site keeps only a fingerprint that cannot be turned back into the
+  number, and the last 4 characters, which the buyer can compare with the sticker.
+- Uploads the result to your account and fills in the listing. Macs and laptops are listed as the whole device;
+  a custom PC can also be sold as single parts or a bundle.
+- Bulgarian and English, light and dark theme.
 
 ## Download
 
@@ -45,11 +54,15 @@ then `git tag v0.2.1 && git push --tags`. GitHub Actions builds the installer an
 
 Програма за Windows и Mac, която проверява компютъра преди продажба в [OLTechX](https://www.oltechx.com).
 
-- Разпознава процесора, видеокартата, RAM модулите, дънната платка, дисковете (със SMART) и батерията на лаптоп.
-- Натоварва процесора и видеокартата и сверява всеки резултат с верния, за да хване нестабилен хардуер.
-- Проверява паметта на видеокартата за грешни клетки.
-- Качва резултата в акаунта ти и попълва обявата: целия компютър, една част или комплект.
-- На български и английски. Първия път следва езика на Windows, после се сменя от превключвателя горе.
+- Разпознава модела на компютъра, процесора, видеокартата, RAM модулите, дънната платка, дисковете (със SMART) и
+  батерията на лаптоп, с 3D модел на всяка част.
+- Мери истинската скорост за около 2 минути и сверява всеки резултат с верния, за да хване нестабилен хардуер:
+  процесор (цели и дробни числа, SHA-256, компресия, забавяне от топлина), RAM (скорост, закъснение, проверка на
+  всяка клетка), видеокарта (натоварване, FP32, скорост и грешки в паметта) и системния диск (запис).
+- Чете фабричните номера срещу измами. Сайтът пази само отпечатък, от който номерът не може да се върне, и последните
+  4 знака, които купувачът сравнява с етикета.
+- Качва резултата в акаунта ти и попълва обявата. Mac и лаптоп се продават цели, а сглобен компютър и на части.
+- На български и английски, светла и тъмна тема.
 
 **Сваляне за Windows:** [OLTechX-Check-Setup.exe](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-Setup.exe).
 

@@ -1,10 +1,16 @@
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain, powerSaveBlocker, shell } from "electron";
 import { account, cancelPairing, claim, logout, SITE, startBrowserPairing, upload } from "./account";
-import { scanHardware } from "./hardware";
+import { diskTest } from "./disk";
+import { readTemps, scanHardware } from "./hardware";
 
 // On laptops with two GPUs the test must run on the dedicated one.
 app.commandLine.appendSwitch("force_high_performance_gpu");
+
+// Automated tests run with their own settings folder and a window that does not take focus,
+// so they never touch the account or the window of the installed app.
+const testing = Boolean(process.env.OLTECHX_USER_DATA);
+if (testing) app.setPath("userData", process.env.OLTECHX_USER_DATA!);
 
 let window: BrowserWindow | null = null;
 let deviceName = "PC";
@@ -17,6 +23,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 640,
     title: "OLTechX Check",
+    show: !testing,
     backgroundColor: "#f6f5f1",
     autoHideMenuBar: true,
     webPreferences: {
@@ -29,6 +36,7 @@ function createWindow() {
     },
   });
   void window.loadFile(join(__dirname, "renderer", "index.html"));
+  if (testing) window.showInactive();
   // Links only go to the OLTechX site and open in the default browser.
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(SITE)) void shell.openExternal(url);
@@ -63,6 +71,8 @@ ipcMain.handle("keep-awake", (_event, on: boolean) => {
   }
 });
 ipcMain.handle("site-url", () => SITE);
+ipcMain.handle("disk-test", () => diskTest());
+ipcMain.handle("temps", () => readTemps());
 
 app.whenReady().then(async () => {
   deviceName = (await scanHardware().catch(() => null))?.deviceName ?? deviceName;

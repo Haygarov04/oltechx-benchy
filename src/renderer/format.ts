@@ -1,13 +1,51 @@
 import type { DetectedPart, PartSlot } from "../shared/types";
 import type { Lang, T } from "./i18n";
 
+const locale = (lang: Lang) => (lang === "bg" ? "bg-BG" : "en-GB");
+const num = (value: number, lang: Lang, digits: number) => value.toLocaleString(locale(lang), { maximumFractionDigits: digits });
+
+export type Unit = "ops" | "flops" | "bytes" | "mb" | "ns" | "iops";
+
+/** A measurement as a number and a unit, for example { value: "12,4", unit: "GB/s" }. */
+export function measure(value: number, unit: Unit, lang: Lang): { value: string; unit: string } {
+  switch (unit) {
+    case "ops": {
+      const [trillion, billion, million, calc] = lang === "bg" ? ["трлн.", "млрд.", "млн.", "изч./с"] : ["T", "B", "M", "calc/s"];
+      if (value >= 1e12) return { value: num(value / 1e12, lang, 2), unit: `${trillion} ${calc}` };
+      if (value >= 1e9) return { value: num(value / 1e9, lang, 1), unit: `${billion} ${calc}` };
+      return { value: num(value / 1e6, lang, 0), unit: `${million} ${calc}` };
+    }
+    case "flops":
+      return value >= 1e12 ? { value: num(value / 1e12, lang, 2), unit: "TFLOPS" } : { value: num(value / 1e9, lang, value >= 1e11 ? 0 : 1), unit: "GFLOPS" };
+    case "bytes":
+      return value >= 1e9 ? { value: num(value / 1e9, lang, 1), unit: "GB/s" } : { value: num(value / 1e6, lang, 0), unit: "MB/s" };
+    case "mb":
+      return value >= 1024 ? { value: num(value / 1024, lang, 1), unit: "GB" } : { value: num(value, lang, 0), unit: "MB" };
+    case "ns":
+      return { value: num(value, lang, 0), unit: lang === "bg" ? "нс" : "ns" };
+    case "iops":
+      return { value: num(Math.round(value), lang, 0), unit: "IOPS" };
+  }
+}
+
+export const show = (value: number, unit: Unit, lang: Lang) => {
+  const m = measure(value, unit, lang);
+  return `${m.value} ${m.unit}`;
+};
+
+/** The old short form, kept for the summary line: "2,1 трлн.". */
 export function formatRate(value: number, lang: Lang): string {
-  const locale = lang === "bg" ? "bg-BG" : "en-GB";
-  const [trillion, billion, million] = lang === "bg" ? ["трлн.", "млрд.", "млн."] : ["T", "B", "M"];
-  if (value >= 1e12) return `${(value / 1e12).toLocaleString(locale, { maximumFractionDigits: 2 })} ${trillion}`;
-  if (value >= 1e9) return `${(value / 1e9).toLocaleString(locale, { maximumFractionDigits: 1 })} ${billion}`;
-  if (value >= 1e6) return `${(value / 1e6).toLocaleString(locale, { maximumFractionDigits: 0 })} ${million}`;
-  return Math.round(value).toLocaleString(locale);
+  return measure(value, "ops", lang).value + (value >= 1e12 ? (lang === "bg" ? " трлн." : " T") : value >= 1e9 ? (lang === "bg" ? " млрд." : " B") : lang === "bg" ? " млн." : " M");
+}
+
+/** The end of a load compared with its start: 1 means no slowdown from heat. The same rule as on the site. */
+export function stability(samples: number[] | undefined): number | null {
+  if (!samples || samples.length < 6) return null;
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[values.length >> 1];
+  const third = Math.floor(samples.length / 3);
+  const first = median(samples.slice(0, third));
+  const last = median(samples.slice(-third));
+  return first > 0 ? Math.min(1, last / first) : null;
 }
 
 const SLOT_KEY = {
@@ -50,3 +88,6 @@ export function partSummary(part: DetectedPart, t: T): string {
       return "";
   }
 }
+
+/** The last 4 characters of a serial number: what the buyer compares with the sticker. */
+export const serialTail = (serial: string | null | undefined) => (serial ? serial.replace(/[^0-9a-z]/gi, "").slice(-4).toUpperCase() : null);
