@@ -13,6 +13,9 @@ export const SITE = (process.env.OLTECHX_URL ?? "https://www.oltechx.com").repla
 
 type Failure = { error: string };
 
+/** The site knows the app by platform: Windows or macOS. */
+const PLATFORM = process.platform === "darwin" ? "mac" : "windows";
+
 let token: string | null = null;
 let remembered = false;
 const file = () => join(app.getPath("userData"), "account.bin");
@@ -77,7 +80,7 @@ export async function logout() {
 
 export async function claim(code: string, deviceName: string, remember: boolean): Promise<Account | Failure> {
   try {
-    const { status, data } = await call("/api/device/pair/claim", { body: { code, deviceName, platform: "windows", remember } });
+    const { status, data } = await call("/api/device/pair/claim", { body: { code, deviceName, platform: PLATFORM, remember } });
     if (status !== 200 || typeof data.token !== "string") return { error: "error.code" };
     save(data.token, remember);
     return { connected: true, userName: String(data.userName ?? ""), remember };
@@ -98,7 +101,7 @@ export async function startBrowserPairing(
   polling?.abort();
   let start: { status: number; data: Json };
   try {
-    start = await call("/api/device/pair/start", { body: { deviceName, platform: "windows", remember } });
+    start = await call("/api/device/pair/start", { body: { deviceName, platform: PLATFORM, remember } });
   } catch {
     return offline;
   }

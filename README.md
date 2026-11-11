@@ -1,6 +1,6 @@
 # OLTechX Check
 
-A Windows app that checks a PC before you sell it on [OLTechX](https://www.oltechx.com), the Bulgarian marketplace for tech.
+A Windows and macOS app that checks a computer before you sell it on [OLTechX](https://www.oltechx.com), the Bulgarian marketplace for tech.
 
 - Detects the processor, graphics card, RAM modules, motherboard, drives (with SMART health) and laptop battery.
 - Loads the processor and graphics card and verifies every result against the known answer, so unstable hardware is caught, not just slow hardware.
@@ -13,6 +13,15 @@ A Windows app that checks a PC before you sell it on [OLTechX](https://www.oltec
 Latest version: [OLTechX-Check-Setup.exe](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-Setup.exe)
 
 The app is not code-signed yet, so the first time Windows may show "Windows protected your PC". Click "More info", then "Run anyway".
+
+### macOS
+
+- One command in Terminal, no warnings: `curl -fsSL https://www.oltechx.com/install-mac.sh | bash`
+  (files downloaded with curl are not marked as "from the internet", so macOS opens the app normally).
+- Or download the disk image: [Apple Silicon (M1–M5)](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-mac-arm64.dmg) ·
+  [Intel](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-mac-x64.dmg).
+  The app has a free ad-hoc signature, not Apple's paid one, so the first time macOS says it cannot verify it:
+  open System Settings → Privacy & Security and click "Open Anyway". This is needed only once.
 
 ## Connecting your account
 
@@ -34,7 +43,7 @@ then `git tag v0.2.1 && git push --tags`. GitHub Actions builds the installer an
 
 # OLTechX Check (на български)
 
-Програма за Windows, която проверява компютъра преди продажба в [OLTechX](https://www.oltechx.com).
+Програма за Windows и Mac, която проверява компютъра преди продажба в [OLTechX](https://www.oltechx.com).
 
 - Разпознава процесора, видеокартата, RAM модулите, дънната платка, дисковете (със SMART) и батерията на лаптоп.
 - Натоварва процесора и видеокартата и сверява всеки резултат с верния, за да хване нестабилен хардуер.
@@ -42,7 +51,12 @@ then `git tag v0.2.1 && git push --tags`. GitHub Actions builds the installer an
 - Качва резултата в акаунта ти и попълва обявата: целия компютър, една част или комплект.
 - На български и английски. Първия път следва езика на Windows, после се сменя от превключвателя горе.
 
-**Сваляне:** [OLTechX-Check-Setup.exe](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-Setup.exe).
+**Сваляне за Windows:** [OLTechX-Check-Setup.exe](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-Setup.exe).
+
+**Mac:** с една команда в Terminal, без предупреждения: `curl -fsSL https://www.oltechx.com/install-mac.sh | bash`.
+Или свали `.dmg` ([Apple Silicon](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-mac-arm64.dmg) ·
+[Intel](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-mac-x64.dmg)). Първия път macOS казва, че не може
+да провери програмата: отвори System Settings → Privacy & Security и натисни „Open Anyway“. Само веднъж.
 Програмата още не е подписана, затова Windows първия път може да покаже „Windows защити компютъра ви“:
 натисни „Повече информация“ и „Изпълни въпреки това“.
 

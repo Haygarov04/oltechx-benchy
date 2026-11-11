@@ -1,8 +1,8 @@
 {
   "name": "oltechx-check",
   "productName": "OLTechX Check",
-  "version": "0.2.0",
-  "description": "Checks a PC before you sell it on OLTechX: detects the parts, stress-tests them and fills in the listing.",
+  "version": "0.3.0",
+  "description": "Checks a PC or Mac before you sell it on OLTechX: detects the parts, stress-tests them and fills in the listing.",
   "author": "OLTechX <oltechx@gmail.com>",
   "license": "MIT",
   "private": true,
@@ -14,7 +14,8 @@
     "start": "npm run build && electron .",
     "typecheck": "tsc --noEmit -p .",
     "dist:win": "npm run build && electron-builder --win nsis --publish never",
-    "release:win": "npm run build && electron-builder --win nsis --publish always"
+    "release:win": "npm run build && electron-builder --win nsis --publish always",
+    "dist:mac": "npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "systeminformation": "^5.33.19"
@@ -78,9 +79,25 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "identity": null,
+      "category": "public.app-category.utilities",
+      "artifactName": "OLTechX-Check-mac-${arch}.${ext}"
     },
     "publish": [
       {
@@ -89,6 +106,10 @@
         "repo": "oltechx-benchy",
         "releaseType": "release"
       }
-    ]
+    ],
+    "afterPack": "scripts/adhoc-sign.cjs",
+    "dmg": {
+      "artifactName": "OLTechX-Check-mac-${arch}.${ext}"
+    }
   }
 }
