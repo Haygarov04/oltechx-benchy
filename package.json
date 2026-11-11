@@ -1,7 +1,7 @@
 {
   "name": "oltechx-check",
   "productName": "OLTechX Check",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Checks a PC or Mac before you sell it on OLTechX: detects the parts, stress-tests them and fills in the listing.",
   "author": "OLTechX <oltechx@gmail.com>",
   "license": "MIT",

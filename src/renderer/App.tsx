@@ -79,6 +79,8 @@ function Check() {
   const [chosen, setChosen] = useState<number[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
+  // Macs and laptops are sold whole by default; single parts are an option.
+  const [separate, setSeparate] = useState(false);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -353,7 +355,7 @@ function Check() {
                   <span>{serials ? t("noPhotoNeeded") : t("photoHint")}</span>
                 </div>
                 {/* Macs and laptops have soldered parts, so the whole device is sold. */}
-                {!hardware.wholeOnly && (
+                {(!hardware.wholeOnly || separate) && (
                   <div>
                     <div className="display h3" style={{ marginBottom: 10 }}>
                       {t("whatSelling")}
@@ -380,10 +382,15 @@ function Check() {
                     <button
                       type="button"
                       className="btn btn-lg"
-                      onClick={() => void window.olx.open(`${stage.uploaded!.sellUrl}&chasti=${[...chosen].sort((a, b) => a - b).join(",")}`)}
+                      onClick={() => void window.olx.open(`${stage.uploaded!.sellUrl}&chasti=${[...chosen].sort((a, b) => a - b).join(",")}${hardware.wholeOnly ? "&otdelno=1" : ""}`)}
                     >
                       <PlusIcon aria-hidden="true" />
                       {chosen.length === 1 ? t("listingOne") : t("listingSet", { n: chosen.length })}
+                    </button>
+                  )}
+                  {hardware.wholeOnly && !separate && !phone(hardware) && (
+                    <button type="button" className="btn btn-lg" onClick={() => setSeparate(true)}>
+                      {t("sellSeparately")}
                     </button>
                   )}
                   <button type="button" className="btn btn-ghost btn-lg" onClick={() => void window.olx.open(stage.uploaded!.url)}>
