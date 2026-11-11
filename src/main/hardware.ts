@@ -164,7 +164,18 @@ export async function scanHardware(): Promise<Hardware> {
   }
 
   // RAM: all modules together, because that is how they are sold.
-  const modules = memLayout.filter((m) => m.size > 0);
+  // Some systems list the same module twice or report empty slots. A module counts once
+  // (by slot and serial), and the modules together can never be more than the RAM the system has.
+  const seen = new Set<string>();
+  let modules = memLayout.filter((m) => {
+    if (!(m.size > 0)) return false;
+    const key = `${m.bank}|${m.serialNum}|${m.partNum}`;
+    if (m.serialNum && seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const listed = modules.reduce((sum, m) => sum + m.size, 0);
+  if (modules.length > 1 && listed > mem.total * 1.25) modules = modules.slice(0, Math.max(1, Math.round(mem.total / modules[0].size)));
   const capacityGb = Math.round((modules.reduce((sum, m) => sum + m.size, 0) || mem.total) / GB);
   const speeds = modules.map((m) => m.clockSpeed).filter((s): s is number => typeof s === "number" && s > 0);
   const types = [...new Set(modules.map((m) => m.type).filter((t) => /ddr/i.test(t ?? "")))];

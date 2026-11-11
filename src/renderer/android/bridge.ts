@@ -55,6 +55,7 @@ export function installAndroidBridge() {
       return () => listeners.delete(listener);
     },
     upload: (payload) => account.upload(payload),
+    live: (stage, progress) => account.live(stage, progress),
     open: async (url) => open(url),
     keepAwake: (on) => Native.keepAwake({ on }),
     siteUrl: async () => SITE,

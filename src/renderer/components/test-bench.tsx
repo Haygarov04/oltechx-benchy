@@ -65,7 +65,11 @@ export function TestBench({ progress, startedAt, hardware }: { progress: Progres
 
   const current = STAGES.indexOf(progress.stage);
   const elapsed = (now - startedAt) / 1000;
-  const remaining = progress.overall > 0.04 ? Math.max(1, Math.round((elapsed * (1 - progress.overall)) / progress.overall)) : null;
+  // The countdown only goes down: a new estimate that is higher is ignored, so it never steps back.
+  const estimate = progress.overall > 0.04 ? Math.max(1, Math.round((elapsed * (1 - progress.overall)) / progress.overall)) : null;
+  const shown = useRef<number | null>(null);
+  if (estimate !== null) shown.current = shown.current === null ? estimate : Math.min(shown.current, estimate);
+  const remaining = shown.current;
   const meta = STAGE_META[progress.stage];
   const chart = progress.samples.length > 1;
 

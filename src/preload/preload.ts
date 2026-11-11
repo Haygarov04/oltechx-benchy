@@ -16,6 +16,7 @@ const bridge: Bridge = {
     return () => ipcRenderer.removeListener("account", handler);
   },
   upload: (payload) => ipcRenderer.invoke("upload", payload),
+  live: (stage, progress) => ipcRenderer.invoke("live", stage, progress),
   open: (url) => ipcRenderer.invoke("open", url),
   keepAwake: (on) => ipcRenderer.invoke("keep-awake", on),
   siteUrl: () => ipcRenderer.invoke("site-url"),

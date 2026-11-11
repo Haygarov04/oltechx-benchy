@@ -115,12 +115,28 @@ function Check() {
     setStage({ kind: "test", progress: startProgress, startedAt: Date.now() });
     await window.olx.keepAwake(true);
     try {
-      const results = await runCheck(controller.signal, (progress) => setStage((s) => (s.kind === "test" ? { ...s, progress } : s)), {
+      // Every three seconds the site hears where the check is, for whoever watches from another device.
+      let told = 0;
+      const tell = (progress: Progress) => {
+        if (Date.now() - told < 3000) return;
+        told = Date.now();
+        void window.olx.live(progress.stage, progress.overall * 100);
+      };
+      void window.olx.live("cpu", 0);
+      const results = await runCheck(
+        controller.signal,
+        (progress) => {
+          tell(progress);
+          setStage((s) => (s.kind === "test" ? { ...s, progress } : s));
+        },
+        {
         vramTargetMb: vramTarget(hardware),
         ramTestMb: ramTarget(hardware),
         disk: () => window.olx.diskTest(),
-        temps: () => window.olx.temps(),
-      });
+          temps: () => window.olx.temps(),
+        },
+      );
+      void window.olx.live("done", 100);
       setStage({ kind: "done", results, uploaded: null, error: null, uploading: false });
       if (account?.connected) await send(results);
     } catch {

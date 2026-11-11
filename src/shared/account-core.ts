@@ -136,6 +136,12 @@ export function createAccount(options: { site: string; platform: "windows" | "ma
       polling = null;
     },
 
+    /** Tells the site how far the check is, so the page open on another device can follow it live. */
+    async live(stage: string, progress: number): Promise<void> {
+      if (!token) return;
+      await call("/api/device/live", { body: { stage, progress: Math.round(progress) }, auth: true }).catch(() => undefined);
+    },
+
     async upload(payload: UploadPayload): Promise<Uploaded | Failure> {
       await load();
       if (!token) return { error: "error.notConnected" };

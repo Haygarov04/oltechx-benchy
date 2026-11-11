@@ -61,6 +61,7 @@ ipcMain.handle("connect-code", (_event, code: string, remember: boolean) => acco
 ipcMain.handle("cancel-connect", () => account.cancelPairing());
 ipcMain.handle("logout", () => account.logout());
 ipcMain.handle("upload", (_event, payload) => account.upload(payload));
+ipcMain.handle("live", (_event, stage: string, progress: number) => account.live(String(stage), Number(progress)));
 ipcMain.handle("open", (_event, url: string) => openSite(String(url)));
 ipcMain.handle("keep-awake", (_event, on: boolean) => {
   if (on && awake === null) awake = powerSaveBlocker.start("prevent-display-sleep");

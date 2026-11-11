@@ -105,6 +105,8 @@ export type Bridge = {
   diskTest: () => Promise<DiskResults>;
   /** Current temperatures in °C, null where the system does not report them. */
   temps: () => Promise<{ cpu: number | null; gpu: number | null; battery?: number | null }>;
+  /** Reports the stage and the percent done to the site, for the live view on another device. */
+  live: (stage: string, progress: number) => Promise<void>;
   /** Android only: scan the QR code shown on the site. */
   scanQr?: () => Promise<string | null>;
   /** Where the interface runs. */
