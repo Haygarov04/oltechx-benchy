@@ -6,10 +6,14 @@ import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/700.css";
 import "./styles.css";
 import { createRoot } from "react-dom/client";
+import { installAndroidBridge, isAndroid } from "./android/bridge";
 import { App } from "./App";
 import { applyTheme, savedTheme } from "./theme";
 
 // The theme is set before the first paint, so a dark system does not flash a light window.
 applyTheme(savedTheme());
+// On Android there is no Electron preload: the same functions come from the native plugin.
+if (isAndroid()) installAndroidBridge();
+document.documentElement.dataset.platform = isAndroid() ? "android" : "desktop";
 
 createRoot(document.getElementById("root")!).render(<App />);

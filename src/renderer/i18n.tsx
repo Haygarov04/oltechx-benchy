@@ -15,6 +15,10 @@ const bg = {
   eyebrow: "OLTechX · проверено с програмата",
   homeTitle: "Провери компютъра",
   homeTitleMac: "Провери своя Mac",
+  homeTitlePhone: "Провери телефона",
+  phoneLabel: "Телефон",
+  scanQr: "Сканирай QR кода от сайта",
+  scanQrHint: "Отвори oltechx.com/proverka на компютъра и натисни „Покажи код за свързване“.",
   homeText:
     "Програмата разпозна частите по-долу. Тестът мери истинската скорост на процесора, паметта, видеокартата и диска и проверява всеки резултат за грешки. После обявата се попълва сама.",
   scanning: "Разпознаваме частите…",
@@ -90,6 +94,8 @@ const bg = {
   gpuNotTested: "не е тествана",
   rate: "{value} изч./с",
   photoCode: "Код за снимката",
+  checkCode: "Номер на проверката",
+  noPhotoNeeded: "Фабричните номера са записани: купувачът ги сравнява с етикетите, затова не е нужна снимка с кода.",
   photoHint: "Снимай компютъра така, че кодът да се вижда на екрана. Снимката влиза в обявата.",
   almost: "Остава само да го качиш",
   almostText: "Свържи програмата с акаунта си и резултатът ще се качи сам. Нищо не се губи.",
@@ -154,6 +160,10 @@ const en: Record<Key, string> = {
   eyebrow: "OLTechX · checked with the app",
   homeTitle: "Check this PC",
   homeTitleMac: "Check this Mac",
+  homeTitlePhone: "Check this phone",
+  phoneLabel: "Phone",
+  scanQr: "Scan the QR code from the site",
+  scanQrHint: "Open oltechx.com/proverka on a computer and press “Show connection code”.",
   homeText:
     "The app found the parts below. The test measures the real speed of the processor, memory, graphics card and drive, and verifies every result. Then the listing fills itself in.",
   scanning: "Finding the parts…",
@@ -229,6 +239,8 @@ const en: Record<Key, string> = {
   gpuNotTested: "not tested",
   rate: "{value} calc/s",
   photoCode: "Code for the photo",
+  checkCode: "Check number",
+  noPhotoNeeded: "The factory serial numbers are recorded: the buyer compares them with the stickers, so no photo with the code is needed.",
   photoHint: "Take a photo of the PC with this code on the screen. The photo goes into the listing.",
   almost: "Just upload it",
   almostText: "Connect the app to your account and the result uploads by itself. Nothing is lost.",
@@ -284,7 +296,15 @@ const en: Record<Key, string> = {
 const dictionaries: Record<Lang, Record<Key, string>> = { bg, en };
 
 /** Health labels arrive in Bulgarian because the site shows them. Here they are translated for display. */
-const HEALTH_EN: Record<string, string> = { Температура: "Temperature", Капацитет: "Capacity", Наред: "OK", Предупреждение: "Warning" };
+const HEALTH_EN: Record<string, string> = {
+  Температура: "Temperature",
+  Капацитет: "Capacity",
+  Наред: "OK",
+  Предупреждение: "Warning",
+  Състояние: "Condition",
+  Добро: "Good",
+  Проблем: "Problem",
+};
 
 export type T = (key: Key, vars?: Record<string, string | number>) => string;
 

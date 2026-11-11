@@ -32,11 +32,17 @@ type Stage =
   | { kind: "test"; progress: Progress; startedAt: number }
   | { kind: "done"; results: CheckResults; uploaded: (Uploaded & { passed?: boolean; problems?: string[] }) | null; error: string | null; uploading: boolean };
 
-/** How much graphics memory to verify: half of it, up to 4 GB, so the system stays responsive. */
-const vramTarget = (hardware: Hardware) => (hardware.vramMb && hardware.vramMb >= 2048 ? Math.min(4096, Math.floor(hardware.vramMb / 2 / 256) * 256) : 1024);
+const phone = (hardware: Hardware) => hardware.device.kind === "phone";
 
-/** How much RAM to verify: a fifth of it, between 512 MB and 2 GB. */
-const ramTarget = (hardware: Hardware) => Math.max(512, Math.min(2048, Math.floor(((hardware.device.memoryGb ?? 8) * 1024 * 0.2) / 256) * 256));
+/** How much graphics memory to verify: half of it, up to 4 GB, so the system stays responsive. A phone shares it with the system. */
+const vramTarget = (hardware: Hardware) =>
+  phone(hardware) ? 512 : hardware.vramMb && hardware.vramMb >= 2048 ? Math.min(4096, Math.floor(hardware.vramMb / 2 / 256) * 256) : 1024;
+
+/** How much RAM to verify: a fifth of it, between 512 MB and 2 GB; on a phone a tenth, up to 768 MB. */
+const ramTarget = (hardware: Hardware) =>
+  phone(hardware)
+    ? Math.max(256, Math.min(768, Math.floor(((hardware.device.memoryGb ?? 4) * 1024 * 0.1) / 128) * 128))
+    : Math.max(512, Math.min(2048, Math.floor(((hardware.device.memoryGb ?? 8) * 1024 * 0.2) / 256) * 256));
 
 const startProgress: Progress = { stage: "cpu", overall: 0, live: null, unit: null, samples: [], skipped: [], results: {} };
 
@@ -81,7 +87,7 @@ function Check() {
     async (results: CheckResults) => {
       if (!hardware) return;
       setStage((s) => (s.kind === "done" ? { ...s, uploading: true, error: null } : s));
-      const uploaded = await window.olx.upload({ device: hardware.device, parts: hardware.parts, results, serial: hardware.serial });
+      const uploaded = await window.olx.upload({ device: hardware.device, parts: hardware.parts, results, serial: hardware.serial, deviceId: hardware.deviceId ?? null });
       setStage((s) =>
         s.kind === "done" ? { ...s, uploading: false, uploaded: "error" in uploaded ? null : uploaded, error: "error" in uploaded ? uploaded.error : null } : s,
       );
@@ -123,6 +129,7 @@ function Check() {
 
   const sellable = hardware?.parts.map((p, i) => ({ p, i })).filter(({ p }) => SELLABLE.includes(p.slot)) ?? [];
   const mac = hardware?.device.platform?.startsWith("macOS") ?? false;
+  const serials = Boolean(hardware?.serial || hardware?.parts.some((p) => p.serial));
 
   return (
     <div className="app">
@@ -131,7 +138,7 @@ function Check() {
         <span className="title">{t("appTitle")}</span>
         <span style={{ marginLeft: "auto" }} className="pill" data-on={account?.connected === true}>
           <span className="dot" />
-          {account?.connected ? (account.userName ? t("connectedAs", { name: account.userName }) : t("connected")) : t("notConnected")}
+          <span className="pill-text">{account?.connected ? (account.userName ? t("connectedAs", { name: account.userName }) : t("connected")) : t("notConnected")}</span>
         </span>
         <ThemeSwitch />
         <LangSwitch />
@@ -143,7 +150,7 @@ function Check() {
             <div className="rise">
               <div className="silk">{t("eyebrow")}</div>
               <h1 className="display h1" style={{ marginTop: 6 }}>
-                {t(mac ? "homeTitleMac" : "homeTitle")}
+                {t(hardware && phone(hardware) ? "homeTitlePhone" : mac ? "homeTitleMac" : "homeTitle")}
               </h1>
               <p className="muted" style={{ maxWidth: 680, fontSize: 17, margin: "10px 0 0" }}>
                 {t("homeText")}
@@ -163,7 +170,7 @@ function Check() {
                       <LiveModel source={{ hardware }} label={hardware.computerName ?? t("customBuild")} />
                     </div>
                     <div className="plate-text">
-                    <div className="silk">{t("computer")}</div>
+                    <div className="silk">{t(phone(hardware) ? "phoneLabel" : "computer")}</div>
                     <div className="plate-name">{hardware.computerName ?? t("customBuild")}</div>
                     <div className="specs-line">
                       {hardware.device.platform && (
@@ -267,7 +274,7 @@ function Check() {
               {stage.uploaded && (
                 <div className="code">
                   <div className="silk" style={{ color: "inherit", opacity: 0.8 }}>
-                    {t("photoCode")}
+                    {serials ? t("checkCode") : t("photoCode")}
                   </div>
                   <div className="code-value">{stage.uploaded.code}</div>
                 </div>
@@ -308,9 +315,10 @@ function Check() {
 
             {stage.uploaded && (
               <div className="card stack rise">
+                {/* Factory serial numbers tie the check to the device; without them the code must be in a photo. */}
                 <div className="row" style={{ gap: 8 }}>
-                  <CameraIcon aria-hidden="true" size={18} color="var(--primary)" />
-                  <span>{t("photoHint")}</span>
+                  {serials ? <FingerprintIcon aria-hidden="true" size={18} color="var(--primary)" /> : <CameraIcon aria-hidden="true" size={18} color="var(--primary)" />}
+                  <span>{serials ? t("noPhotoNeeded") : t("photoHint")}</span>
                 </div>
                 {/* Macs and laptops have soldered parts, so the whole device is sold. */}
                 {!hardware.wholeOnly && (

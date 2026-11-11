@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain, powerSaveBlocker, shell } from "electron";
-import { account, cancelPairing, claim, logout, SITE, startBrowserPairing, upload } from "./account";
+import { desktopAccount as account, SITE, setDeviceName } from "./account";
 import { diskTest } from "./disk";
 import { readTemps, scanHardware } from "./hardware";
 
@@ -13,7 +13,6 @@ const testing = Boolean(process.env.OLTECHX_USER_DATA);
 if (testing) app.setPath("userData", process.env.OLTECHX_USER_DATA!);
 
 let window: BrowserWindow | null = null;
-let deviceName = "PC";
 let awake: number | null = null;
 
 function createWindow() {
@@ -51,17 +50,17 @@ const openSite = (url: string) => {
 
 ipcMain.handle("scan", async () => {
   const hardware = await scanHardware();
-  deviceName = hardware.deviceName;
+  setDeviceName(hardware.deviceName);
   return hardware;
 });
-ipcMain.handle("account", () => account());
+ipcMain.handle("account", () => account.account());
 ipcMain.handle("connect-browser", (_event, remember: boolean) =>
-  startBrowserPairing(deviceName, Boolean(remember), openSite, (result) => window?.webContents.send("account", result)),
+  account.startBrowserPairing(Boolean(remember), openSite, (result) => window?.webContents.send("account", result)),
 );
-ipcMain.handle("connect-code", (_event, code: string, remember: boolean) => claim(String(code), deviceName, Boolean(remember)));
-ipcMain.handle("cancel-connect", () => cancelPairing());
-ipcMain.handle("logout", () => logout());
-ipcMain.handle("upload", (_event, payload) => upload(payload));
+ipcMain.handle("connect-code", (_event, code: string, remember: boolean) => account.claim(String(code), Boolean(remember)));
+ipcMain.handle("cancel-connect", () => account.cancelPairing());
+ipcMain.handle("logout", () => account.logout());
+ipcMain.handle("upload", (_event, payload) => account.upload(payload));
 ipcMain.handle("open", (_event, url: string) => openSite(String(url)));
 ipcMain.handle("keep-awake", (_event, on: boolean) => {
   if (on && awake === null) awake = powerSaveBlocker.start("prevent-display-sleep");
@@ -75,7 +74,7 @@ ipcMain.handle("disk-test", () => diskTest());
 ipcMain.handle("temps", () => readTemps());
 
 app.whenReady().then(async () => {
-  deviceName = (await scanHardware().catch(() => null))?.deviceName ?? deviceName;
+  setDeviceName((await scanHardware().catch(() => null))?.deviceName ?? "PC");
   createWindow();
 });
 app.on("window-all-closed", () => app.quit());

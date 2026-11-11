@@ -49,6 +49,8 @@ export type CheckResults = {
     samples: number[];
     checked: number;
     errors: number;
+    /** Which graphics interface ran the test: WebGPU, or WebGL 2 where WebGPU is missing. */
+    api?: "webgpu" | "webgl";
     /** FP32 throughput, FLOPS. */
     flops?: number;
     /** Memory bandwidth, bytes per second. */
@@ -57,7 +59,7 @@ export type CheckResults = {
   vram: { tested: boolean; reason?: string; testedMb: number; errors: number };
   ram?: { bandwidth: number; latencyNs: number; testedMb: number; errors: number };
   disk?: DiskResults;
-  temps?: { cpuMax: number | null; gpuMax: number | null };
+  temps?: { cpuMax: number | null; gpuMax: number | null; batteryMax?: number | null };
   hiddenMs: number;
   durationMs: number;
 };
@@ -79,9 +81,11 @@ export type Hardware = {
   deviceName: string;
   /** The serial number of the whole computer (laptops, Macs, ready-made PCs). */
   serial: string | null;
+  /** Android: a per-app device id. Not a factory serial, so the buyer sees nothing of it. */
+  deviceId?: string | null;
 };
 
-export type UploadPayload = { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults; serial: string | null };
+export type UploadPayload = { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults; serial: string | null; deviceId?: string | null };
 
 export type Account = { connected: false } | { connected: true; userName: string; remember: boolean };
 
@@ -100,7 +104,11 @@ export type Bridge = {
   /** Writes about 1 GB to the system drive and deletes it. */
   diskTest: () => Promise<DiskResults>;
   /** Current temperatures in °C, null where the system does not report them. */
-  temps: () => Promise<{ cpu: number | null; gpu: number | null }>;
+  temps: () => Promise<{ cpu: number | null; gpu: number | null; battery?: number | null }>;
+  /** Android only: scan the QR code shown on the site. */
+  scanQr?: () => Promise<string | null>;
+  /** Where the interface runs. */
+  platform?: "desktop" | "android";
   open: (url: string) => Promise<void>;
   keepAwake: (on: boolean) => Promise<void>;
   siteUrl: () => Promise<string>;

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OLTechX Check</string>
+    <string name="title_activity_main">OLTechX Check</string>
+    <string name="package_name">com.oltechx.check</string>
+    <string name="custom_url_scheme">com.oltechx.check</string>
+</resources>

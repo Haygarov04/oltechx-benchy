@@ -1,6 +1,6 @@
 # OLTechX Check
 
-A Windows and macOS app that checks a computer before you sell it on [OLTechX](https://www.oltechx.com), the Bulgarian marketplace for tech.
+A Windows, macOS and Android app that checks a computer or a phone before you sell it on [OLTechX](https://www.oltechx.com), the Bulgarian marketplace for tech.
 
 - Detects the computer model (for example "MacBook Air (15-inch, M5)" or "Lenovo Legion 5"), the processor, graphics card,
   RAM modules, motherboard, drives (with SMART health) and laptop battery, with 3D models of each part.
@@ -32,6 +32,14 @@ The app is not code-signed yet, so the first time Windows may show "Windows prot
   The app has a free ad-hoc signature, not Apple's paid one, so the first time macOS says it cannot verify it:
   open System Settings → Privacy & Security and click "Open Anyway". This is needed only once.
 
+### Android
+
+Download [OLTechX-Check.apk](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check.apk) on the phone
+and open it. Android asks once to allow installing apps from the browser. The app reads the phone model, chip, memory,
+storage and battery health, runs the same tests as the desktop app (graphics through WebGPU, or WebGL where WebGPU is
+missing) and connects to your account by scanning the QR code from `oltechx.com/proverka`. No camera permission is
+needed: the scanner screen is Google's.
+
 ## Connecting your account
 
 No password in the app. Either click "Connect in the browser" and confirm on the site, or enter the code from `oltechx.com/proverka`.
@@ -52,7 +60,7 @@ then `git tag v0.2.1 && git push --tags`. GitHub Actions builds the installer an
 
 # OLTechX Check (на български)
 
-Програма за Windows и Mac, която проверява компютъра преди продажба в [OLTechX](https://www.oltechx.com).
+Програма за Windows и Mac и приложение за Android, които проверяват компютъра или телефона преди продажба в [OLTechX](https://www.oltechx.com).
 
 - Разпознава модела на компютъра, процесора, видеокартата, RAM модулите, дънната платка, дисковете (със SMART) и
   батерията на лаптоп, с 3D модел на всяка част.
@@ -72,6 +80,10 @@ then `git tag v0.2.1 && git push --tags`. GitHub Actions builds the installer an
 да провери програмата: отвори System Settings → Privacy & Security и натисни „Open Anyway“. Само веднъж.
 Програмата още не е подписана, затова Windows първия път може да покаже „Windows защити компютъра ви“:
 натисни „Повече информация“ и „Изпълни въпреки това“.
+
+**Android:** свали [OLTechX-Check.apk](https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check.apk)
+на телефона и го отвори. Android пита веднъж дали да позволи инсталиране от браузъра. Приложението разпознава модела,
+чипа, паметта и здравето на батерията, пуска същите тестове и се свързва със сканиране на QR кода от `oltechx.com/proverka`.
 
 **Свързване:** без парола в програмата. Натисни „Свържи през браузъра“ и потвърди в сайта, или въведи кода от
 `oltechx.com/proverka`. Ключът може само да качва проверки, пази се криптиран от Windows и спира да работи при изход,

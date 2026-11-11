@@ -1027,3 +1027,69 @@ button.part:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Phones: one column, compact header, room for the system bars. */
+@media (max-width: 600px) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .topbar {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+  .topbar .title,
+  .pill-text {
+    display: none;
+  }
+  .pill {
+    padding: 0 9px;
+  }
+  .main {
+    padding: 18px 14px calc(28px + env(safe-area-inset-bottom));
+    gap: 16px;
+  }
+  .h1 {
+    font-size: 40px;
+  }
+  .plate {
+    grid-template-columns: 1fr;
+    padding: 16px 18px;
+  }
+  .plate-model {
+    order: -1;
+    height: 210px;
+    margin: -6px -8px 0;
+  }
+  .plate-name {
+    font-size: 32px;
+  }
+  .start-list {
+    grid-template-columns: 1fr;
+  }
+  .stage-panel {
+    min-height: 0;
+  }
+  .stage-figure {
+    height: 190px;
+  }
+  .gauge {
+    max-width: 220px;
+  }
+  .stage {
+    grid-template-columns: 30px minmax(0, 1fr);
+    padding: 8px 10px;
+  }
+  .stage-value {
+    grid-column: 2;
+    text-align: left;
+  }
+  .stage-note {
+    display: none;
+  }
+  .metric-card {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

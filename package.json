@@ -1,7 +1,7 @@
 {
   "name": "oltechx-check",
   "productName": "OLTechX Check",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Checks a PC or Mac before you sell it on OLTechX: detects the parts, stress-tests them and fills in the listing.",
   "author": "OLTechX <oltechx@gmail.com>",
   "license": "MIT",
@@ -21,6 +21,11 @@
     "systeminformation": "^5.33.19"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/sofia-sans": "^5.3.0",
     "@fontsource/sofia-sans-extra-condensed": "^5.3.0",

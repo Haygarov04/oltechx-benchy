@@ -1,5 +1,6 @@
 import type { CheckResults, DiskResults } from "../../shared/types";
 import { bandwidthTest, flopsTest, gpuStress, memoryTest, requestAdapter } from "./gpu";
+import { webglAvailable, webglStress } from "./gpu-webgl";
 import { intUnit, matmulUnit } from "./kernels";
 import { perSecond, runJob, stopped } from "./workers";
 
@@ -40,7 +41,7 @@ export type CheckOptions = {
   ramTestMb: number;
   /** The drive test runs outside the interface (in the main process on a PC, natively on a phone). */
   disk?: () => Promise<DiskResults>;
-  temps?: () => Promise<{ cpu: number | null; gpu: number | null }>;
+  temps?: () => Promise<{ cpu: number | null; gpu: number | null; battery?: number | null }>;
 };
 
 const INT_N = 100_000;
@@ -93,12 +94,16 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
     }
   }
 
+  // Without WebGPU (many phones, older drivers) the graphics stress test runs through WebGL 2.
+  const webgl = !gpuDevice && webglAvailable();
+  const graphics = Boolean(gpuDevice) || webgl;
+
   // Planned time of every stage, for the progress bar. Without a graphics test the processor runs longer.
   const threads = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 64));
   const memoryWorkers = Math.min(threads, 8);
   const ms = {
     single: 5000,
-    multi: gpuDevice ? 20_000 : 30_000,
+    multi: graphics ? 20_000 : 30_000,
     floatSingle: 3000,
     floatMulti: 6000,
     hash: 4000,
@@ -106,8 +111,8 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
     copy: 3000,
     chase: 2500,
     memtest: Math.max(2000, options.ramTestMb * 1.2),
-    gpuWarm: gpuDevice ? 5000 : 0,
-    gpu: gpuDevice ? 20_000 : 0,
+    gpuWarm: graphics ? 5000 : 0,
+    gpu: graphics ? 20_000 : 0,
     flops: gpuDevice ? 6000 : 0,
     bandwidth: gpuDevice ? 3000 : 0,
     vram: gpuDevice ? Math.max(4000, options.vramTargetMb * 2.5) : 0,
@@ -115,7 +120,10 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
   };
   const total = Object.values(ms).reduce((a, b) => a + b, 0) + 3000;
 
-  const skipped: StageId[] = [...(gpuDevice ? [] : (["gpu", "gpuMath", "vram"] as StageId[])), ...(options.disk ? [] : (["disk"] as StageId[]))];
+  const skipped: StageId[] = [
+    ...(gpuDevice ? [] : webgl ? (["gpuMath", "vram"] as StageId[]) : (["gpu", "gpuMath", "vram"] as StageId[])),
+    ...(options.disk ? [] : (["disk"] as StageId[])),
+  ];
   const state: Progress = { stage: "cpu", overall: 0, live: null, unit: null, samples: [], skipped, results: {} };
   let lastSample = 0;
   const emit = (patch: Partial<Progress> = {}) => {
@@ -132,11 +140,12 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
   const ticker = setInterval(() => emit(), 400);
 
   // Temperatures every few seconds, where the system reports them.
-  const temps = { cpuMax: null as number | null, gpuMax: null as number | null };
+  const temps = { cpuMax: null as number | null, gpuMax: null as number | null, batteryMax: null as number | null };
   const readTemps = async () => {
     const now = await options.temps?.().catch(() => null);
     if (now?.cpu) temps.cpuMax = Math.max(temps.cpuMax ?? 0, now.cpu);
     if (now?.gpu) temps.gpuMax = Math.max(temps.gpuMax ?? 0, now.gpu);
+    if (now?.battery) temps.batteryMax = Math.max(temps.batteryMax ?? 0, now.battery);
   };
   const tempTimer = options.temps ? setInterval(() => void readTemps(), 3000) : null;
 
@@ -227,7 +236,7 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
       try {
         emit({ stage: "gpu", live: null, unit: "ops", samples: [] });
         const stress = await gpuStress(gpuDevice, ms.gpu, signal, (samples) => emit({ live: samples.at(-1) ?? null, samples }));
-        gpu = { tested: true, ...stress };
+        gpu = { tested: true, api: "webgpu", ...stress };
         emit({ results: { ...state.results, gpu: { ...gpu } } });
 
         emit({ stage: "gpuMath", live: null, unit: "flops", samples: [] });
@@ -251,6 +260,16 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
         vram = { ...vram, reason: vram.reason ?? reason };
       } finally {
         gpuDevice.destroy();
+      }
+    } else if (webgl) {
+      try {
+        emit({ stage: "gpu", live: null, unit: "ops", samples: [] });
+        const stress = await webglStress(ms.gpu, signal, (samples) => emit({ live: samples.at(-1) ?? null, samples }));
+        gpu = { tested: true, api: "webgl", ...stress };
+        emit({ results: { ...state.results, gpu: { ...gpu } } });
+      } catch (error) {
+        if (signal.aborted) throw error;
+        gpu = { ...gpu, tested: true, reason: "Видеокартата спря да отговаря по време на теста." };
       }
     }
 

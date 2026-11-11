@@ -339,6 +339,14 @@ function storage(part: DetectedPart): Model {
     for (const [x, z] of [[-4.6, -6.8], [4.6, -6.8], [-4.6, 6.8], [4.6, 6.8]]) group.add(at(new Mesh(new CylinderGeometry(0.22, 0.22, 0.05, 16), metal("#8d949e")), x, 2.62, z));
     return { group, view: { elevation: 42 } };
   }
+  if (kind === "UFS") {
+    // Phone storage: one flash chip soldered on the board.
+    group.add(at(box(4.4, 0.1, 3.2, pcb("#25543b"), 0.05), 0, 0.05, 0));
+    group.add(at(box(2.6, 0.18, 2.0, chip(), 0.05), -0.3, 0.19, 0));
+    group.add(at(topLabel(labelTexture([{ text: "UFS", size: 120, weight: 800, color: "rgba(200,205,212,0.9)" }, { text: capacity, size: 60, color: "rgba(150,156,166,0.9)", font: MONO }], 512, 400), 2.0, 1.55), -0.3, 0.282, 0));
+    for (const z of [-1.0, 1.0]) group.add(at(box(0.5, 0.08, 0.3, metal("#b98d45", 0.35)), 1.6, 0.14, z));
+    return { group, view: { elevation: 42 } };
+  }
   if (kind === "SATA SSD") {
     group.add(at(box(7, 0.7, 10, gunmetal("#30343b"), 0.2), 0, 0.35, 0));
     group.add(at(topLabel(labelTexture([{ text: brand, size: 110, weight: 800, color: "#e9ecf1" }, { text: `SSD · ${capacity}`, size: 54, color: "#9aa3b0", font: MONO }], 512, 400), 5.6, 4.4), 0, 0.702, 0));

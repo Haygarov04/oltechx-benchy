@@ -1,4 +1,4 @@
-import { GlobeIcon, KeyRoundIcon, Loader2Icon, LogOutIcon, UserCheckIcon } from "lucide-react";
+import { GlobeIcon, KeyRoundIcon, Loader2Icon, LogOutIcon, QrCodeIcon, UserCheckIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Account } from "../../shared/types";
 import { errorKey, useLang } from "../i18n";
@@ -62,6 +62,20 @@ export function AccountCard({ account, onChange }: { account: Account | null; on
     else setWaiting(result.code);
   };
 
+  /** Android: the code comes from the QR on the site, e.g. https://www.oltechx.com/svarzhi/ABCD2345. */
+  const withQr = async () => {
+    setError(null);
+    const value = await window.olx.scanQr?.().catch(() => null);
+    if (!value) return;
+    const scanned = (value.split("/").filter(Boolean).at(-1) ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+    if (scanned.length !== 8) return setError("error.code");
+    setBusy(true);
+    const result = await window.olx.connectWithCode(scanned, remember);
+    setBusy(false);
+    if ("error" in result) setError(result.error);
+    else onChange(result);
+  };
+
   const withCode = async () => {
     setBusy(true);
     setError(null);
@@ -103,7 +117,18 @@ export function AccountCard({ account, onChange }: { account: Account | null; on
         </div>
       ) : (
         <>
-          <button type="button" className="btn btn-primary" onClick={() => void withBrowser()} disabled={busy}>
+          {window.olx.scanQr && (
+            <div style={{ display: "grid", gap: 6 }}>
+              <button type="button" className="btn btn-primary btn-lg" onClick={() => void withQr()} disabled={busy}>
+                <QrCodeIcon aria-hidden="true" />
+                {t("scanQr")}
+              </button>
+              <div className="muted" style={{ fontSize: 13 }}>
+                {t("scanQrHint")}
+              </div>
+            </div>
+          )}
+          <button type="button" className={window.olx.scanQr ? "btn" : "btn btn-primary"} onClick={() => void withBrowser()} disabled={busy}>
             <GlobeIcon aria-hidden="true" />
             {t("connectBrowser")}
           </button>
