@@ -17,9 +17,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Account, CheckResults, Hardware, Uploaded } from "../shared/types";
 import { AccountCard } from "./components/account-card";
 import { LogoMark } from "./components/logo-mark";
-import { BoardView } from "./components/board-view";
-import { Gallery } from "./components/gallery";
-import { LiveModel } from "./components/model-view";
+import { BoardRender } from "./components/board-render";
+import { deviceSlug, Render } from "./components/render";
 import { PartCard } from "./components/part-card";
 import { PartFocus } from "./components/part-focus";
 import { Results } from "./components/results";
@@ -62,13 +61,11 @@ function LangSwitch() {
 }
 
 export function App() {
-  const [gallery, setGallery] = useState(() => location.hash === "#models");
-  useEffect(() => {
-    const onHash = () => setGallery(location.hash === "#models");
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
-  return <LangProvider>{gallery ? <Gallery /> : <Check />}</LangProvider>;
+  return (
+    <LangProvider>
+      <Check />
+    </LangProvider>
+  );
 }
 
 function Check() {
@@ -115,6 +112,7 @@ function Check() {
     abort.current = controller;
     setChosen([]);
     setStage({ kind: "test", progress: startProgress, startedAt: Date.now() });
+    window.scrollTo(0, 0);
     await window.olx.keepAwake(true);
     try {
       // Every three seconds the site hears where the check is, for whoever watches from another device.
@@ -140,6 +138,7 @@ function Check() {
       );
       void window.olx.live("done", 100);
       setStage({ kind: "done", results, uploaded: null, error: null, uploading: false });
+      window.scrollTo(0, 0);
       if (account?.connected) await send(results);
     } catch {
       if (!controller.signal.aborted) setStage({ kind: "home" });
@@ -188,7 +187,7 @@ function Check() {
                 {hardware && (
                   <div className="card plate rise">
                     <div className="plate-model">
-                      <LiveModel source={{ hardware }} label={hardware.computerName ?? t("customBuild")} />
+                      <Render slug={deviceSlug(hardware)} label={hardware.computerName ?? t("customBuild")} live />
                     </div>
                     <div className="plate-text">
                     <div className="silk">{t(phone(hardware) ? "phoneLabel" : "computer")}</div>
@@ -234,7 +233,7 @@ function Check() {
                       <span>{t("boardHint")}</span>
                     </div>
                     <div className="board-stage">
-                      <BoardView parts={hardware.parts} onSelect={setFocus} label={t("boardTitle")} />
+                      <BoardRender parts={hardware.parts} onSelect={setFocus} label={t("boardTitle")} />
                     </div>
                   </div>
                 )}
