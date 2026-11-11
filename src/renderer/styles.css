@@ -427,6 +427,81 @@ button {
   height: 100%;
 }
 
+.model-turn {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.model-live {
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.model-live:active {
+  cursor: grabbing;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in oklab, var(--bg) 55%, transparent);
+  backdrop-filter: blur(14px) saturate(1.1);
+  animation: fade 0.2s ease both;
+}
+
+.focus {
+  position: relative;
+  width: min(920px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+.focus-model {
+  position: relative;
+  height: 380px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 64%),
+    var(--surface-2);
+}
+
+.focus-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 80%, transparent);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.focus-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  z-index: 2;
+}
+
 .model-picture {
   width: 100%;
   height: 100%;
@@ -513,8 +588,8 @@ button.part:hover {
 
 .part-figure {
   flex: none;
-  width: 104px;
-  height: 80px;
+  width: 132px;
+  height: 100px;
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -942,6 +1017,19 @@ button.part:hover {
 
 /* ── Motion ─────────────────────────────────────────────────────────────── */
 
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -1088,6 +1176,12 @@ button.part:hover {
   }
   .metric-card {
     grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .focus {
+    grid-template-columns: 1fr;
+  }
+  .focus-model {
+    height: 260px;
   }
   .gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));

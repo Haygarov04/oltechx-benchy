@@ -12,6 +12,7 @@ import {
   ShadowMaterial,
   Sphere,
   SRGBColorSpace,
+  type Texture,
   Vector3,
   WebGLRenderer,
 } from "three";
@@ -23,11 +24,23 @@ import type { Model, ModelState } from "./models";
  * shadow and a cool rim light. Used live (animated) and for still pictures of the parts.
  */
 
+const environments = new WeakMap<WebGLRenderer, Texture>();
+
+/** The room that the metal reflects. Made once for each renderer. */
+function environment(renderer: WebGLRenderer) {
+  let texture = environments.get(renderer);
+  if (!texture) {
+    const pmrem = new PMREMGenerator(renderer);
+    texture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    environments.set(renderer, texture);
+  }
+  return texture;
+}
+
 function studio(renderer: WebGLRenderer) {
   const scene = new Scene();
-  const pmrem = new PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
+  scene.environment = environment(renderer);
   scene.add(new HemisphereLight("#ffffff", "#3a3f48", 0.5));
   const key = new DirectionalLight("#ffffff", 2.4);
   key.castShadow = true;
@@ -130,6 +143,61 @@ export async function picture(key: string, build: () => Model, width = 360, heig
   return url;
 }
 
+// ── Turntables ──────────────────────────────────────────────────────────────
+
+type Spin = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; model: Model; parts: ReturnType<typeof studio>; camera: PerspectiveCamera; offset: number };
+
+let table: { renderer: WebGLRenderer; spins: Spin[]; cursor: number; frame: number; last: number } | null = null;
+
+function turn(now: number) {
+  if (!table) return;
+  table.frame = table.spins.length ? requestAnimationFrame(turn) : 0;
+  if (now - table.last < 1000 / 30 || !table.spins.length) return;
+  const delta = Math.min(0.2, (now - table.last) / 1000);
+  table.last = now;
+  // Two parts a frame: with six cards each one still moves about ten times a second.
+  for (let n = 0; n < Math.min(2, table.spins.length); n++) {
+    table.cursor = (table.cursor + 1) % table.spins.length;
+    const spin = table.spins[table.cursor];
+    const { width, height } = spin.canvas;
+    if (!width || !height) continue;
+    const time = now / 1000;
+    spin.model.group.rotation.y = time * 0.45 + spin.offset;
+    spin.model.animate?.(time, delta * table.spins.length * 0.5, { active: false, heat: 0 });
+    table.renderer.setSize(width, height, false);
+    table.renderer.render(spin.parts.scene, spin.camera);
+    spin.context.clearRect(0, 0, width, height);
+    spin.context.drawImage(table.renderer.domElement, 0, 0);
+  }
+}
+
+/**
+ * A part slowly turning in a small canvas. All turntables share one renderer and take turns,
+ * so a page full of parts costs one graphics context. Returns a function that removes it.
+ */
+export function turntable(canvas: HTMLCanvasElement, build: () => Model): () => void {
+  if (!table) table = { renderer: makeRenderer(), spins: [], cursor: 0, frame: 0, last: 0 };
+  const current = table;
+  const ratio = Math.min(window.devicePixelRatio, 2);
+  canvas.width = Math.round(canvas.clientWidth * ratio);
+  canvas.height = Math.round(canvas.clientHeight * ratio);
+  const context = canvas.getContext("2d");
+  if (!context || !canvas.width) return () => undefined;
+  const model = build();
+  const parts = studio(current.renderer);
+  const camera = new PerspectiveCamera(30, 1, 0.1, 1000);
+  // Framed at the widest angle, so nothing leaves the picture while it turns.
+  const view = model.view ?? {};
+  model.view = { ...view, elevation: view.elevation ?? 32, azimuth: 45 };
+  frame(model, parts, camera, canvas.width / canvas.height, 0.8);
+  const spin: Spin = { canvas, context, model, parts, camera, offset: current.spins.length * 0.9 };
+  current.spins.push(spin);
+  if (!current.frame) current.frame = requestAnimationFrame(turn);
+  return () => {
+    current.spins = current.spins.filter((s) => s !== spin);
+  };
+}
+
 // ── Live view ───────────────────────────────────────────────────────────────
 
 /**
@@ -142,6 +210,8 @@ export class LiveStage {
   private camera = new PerspectiveCamera(30, 1, 0.1, 1000);
   private model: Model | null = null;
   private state: ModelState & { slow: boolean; sway: boolean } = { active: false, heat: 0, slow: false, sway: true };
+  private yaw = 0;
+  private spinSpeed = 0;
   private frameId = 0;
   private drawnSlow = false;
   private last = 0;
@@ -169,6 +239,13 @@ export class LiveStage {
     Object.assign(this.state, state);
   }
 
+  /** Turning the model by hand: pixels dragged, and how fast, for the coast afterwards. */
+  drag(pixels: number, speed = 0) {
+    this.yaw += pixels * 0.012;
+    this.spinSpeed = speed * 0.012;
+    this.drawnSlow = false;
+  }
+
   private resize() {
     const { clientWidth: w, clientHeight: h } = this.canvas;
     if (!w || !h) return;
@@ -189,7 +266,10 @@ export class LiveStage {
     const time = (now - this.start) / 1000;
     if (this.model) {
       // A slow turn back and forth, like a product on a turntable.
-      if (this.state.sway) this.model.group.rotation.y = Math.sin(time * 0.35) * 0.32;
+      // After a drag it keeps turning for a moment, like something with weight.
+      this.yaw += this.spinSpeed * delta;
+      this.spinSpeed *= Math.pow(0.04, delta);
+      if (this.state.sway) this.model.group.rotation.y = Math.sin(time * 0.35) * 0.32 + this.yaw;
       this.model.animate?.(time, delta, this.state);
     }
     this.renderer.render(this.parts.scene, this.camera);

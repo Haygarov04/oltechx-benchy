@@ -149,6 +149,9 @@ function appleChip(model: string): Model {
   group.add(instanced(new BoxGeometry(0.1, 0.01, 0.08), pads, padPositions));
   const dieMaterial = chip();
   group.add(at(box(2.4, 0.12, 3.0, dieMaterial, 0.05), -0.75, 0.2, 0));
+  const tiny: [number, number, number][] = [];
+  for (let i = 0; i < 9; i++) tiny.push([0.62, 0.17, -1.4 + i * 0.35], [-2.1, 0.17, -1.4 + i * 0.35]);
+  group.add(instanced(new BoxGeometry(0.1, 0.06, 0.18), metal("#b98d45", 0.35), tiny));
   for (const z of [-0.78, 0.78]) group.add(at(box(1.15, 0.1, 1.4, plastic("#16181c", 0.35), 0.04), 1.35, 0.19, z));
   const label = topLabel(labelTexture([{ text: model || "M", size: 120, weight: 800, color: "rgba(205,210,218,0.92)" }], 512, 512), 2.0, 2.0, { metalness: 0.4, roughness: 0.3 });
   group.add(at(label, -0.75, 0.262, 0));
@@ -418,12 +421,8 @@ function battery(part: DetectedPart): Model {
   const group = new Group();
   const health = Math.max(0, Math.min(100, Number(part.specs.healthPct) || 0));
   group.add(at(box(12, 0.75, 5.2, plastic("#22252a", 0.5), 0.2), 0, 0.375, 0));
-  for (const x of [-3.9, 0, 3.9]) {
-    const cell = new Mesh(new CylinderGeometry(0.42, 0.42, 3.4, 24), plastic("#2b3036", 0.35));
-    cell.rotation.x = Math.PI / 2;
-    cell.position.set(x, 0.7, 0);
-    group.add(cell);
-  }
+  // Flat pouch cells, as in modern laptops and phones.
+  for (const x of [-3.9, 0, 3.9]) group.add(at(box(3.5, 0.16, 3.9, metal("#4a4f57", 0.5), 0.07), x, 0.8, -0.35));
   const color = health >= 80 ? "#2bd17e" : health >= 60 ? "#f0b45c" : "#ff6b5e";
   const level = glow(color, 1.8);
   group.add(at(box(10 * (health / 100), 0.06, 0.35, level, 0.03), -5 + 5 * (health / 100), 0.79, 2.15));

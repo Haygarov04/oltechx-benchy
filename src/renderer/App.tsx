@@ -20,6 +20,7 @@ import { LogoMark } from "./components/logo-mark";
 import { Gallery } from "./components/gallery";
 import { LiveModel } from "./components/model-view";
 import { PartCard } from "./components/part-card";
+import { PartFocus } from "./components/part-focus";
 import { Results } from "./components/results";
 import { STAGE_META, TestBench } from "./components/test-bench";
 import { type Progress, runCheck, STAGES } from "./engine";
@@ -76,6 +77,7 @@ function Check() {
   const [stage, setStage] = useState<Stage>({ kind: "home" });
   const [chosen, setChosen] = useState<number[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [focus, setFocus] = useState<number | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -209,7 +211,7 @@ function Check() {
                 {hardware && (
                   <div className="parts">
                     {hardware.parts.map((part, i) => (
-                      <PartCard key={`${part.slot}-${i}`} part={part} index={i} />
+                      <PartCard key={`${part.slot}-${i}`} part={part} index={i} onOpen={() => setFocus(i)} />
                     ))}
                   </div>
                 )}
@@ -256,6 +258,8 @@ function Check() {
             </div>
           </>
         )}
+
+        {stage.kind === "home" && hardware && focus !== null && hardware.parts[focus] && <PartFocus part={hardware.parts[focus]} onClose={() => setFocus(null)} />}
 
         {stage.kind === "test" && hardware && <TestBench progress={stage.progress} startedAt={stage.startedAt} hardware={hardware} />}
 

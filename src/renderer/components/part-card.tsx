@@ -5,7 +5,7 @@ import { useLang } from "../i18n";
 import { PartPicture } from "./model-view";
 
 /** One detected part with its drawing. With onToggle it becomes an "I'm selling this" checkbox. */
-export function PartCard({ part, index, on, onToggle }: { part: DetectedPart; index: number; on?: boolean; onToggle?: () => void }) {
+export function PartCard({ part, index, on, onToggle, onOpen }: { part: DetectedPart; index: number; on?: boolean; onToggle?: () => void; onOpen?: () => void }) {
   const { t, health } = useLang();
   const summary = partSummary(part, t);
   const tail = serialTail(part.serial);
@@ -47,6 +47,10 @@ export function PartCard({ part, index, on, onToggle }: { part: DetectedPart; in
   const style = { animationDelay: `${index * 70}ms` };
   return onToggle ? (
     <button type="button" className="part" data-on={on} aria-pressed={on} onClick={onToggle} style={style}>
+      {body}
+    </button>
+  ) : onOpen ? (
+    <button type="button" className="part" onClick={onOpen} style={style}>
       {body}
     </button>
   ) : (
