@@ -265,7 +265,7 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
       try {
         emit({ stage: "gpu", live: null, unit: "ops", samples: [] });
         const stress = await webglStress(ms.gpu, signal, (samples) => emit({ live: samples.at(-1) ?? null, samples }));
-        gpu = { tested: true, api: "webgl", ...stress };
+        gpu = { tested: true, api: "webgl", ...stress, ...(stress.samples.length === 0 ? { reason: "Видеокартата не даде резултат." } : {}) };
         emit({ results: { ...state.results, gpu: { ...gpu } } });
       } catch (error) {
         if (signal.aborted) throw error;

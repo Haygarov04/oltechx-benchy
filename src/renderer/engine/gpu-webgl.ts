@@ -86,13 +86,15 @@ export async function webglStress(durationMs: number, signal: AbortSignal, onSam
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
   gl.viewport(0, 0, WIDTH, HEIGHT);
   const pixels = new Uint32Array(CELLS * 4);
+  const one = new Uint32Array(4);
 
+  // Reading one pixel waits until the drawing is really done; finish() alone may return early.
   const draw = (iterations: number, seed: number) => {
     gl.uniform1ui(iterationsAt, iterations);
     gl.uniform1ui(seedAt, seed);
     const started = performance.now();
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.finish();
+    gl.readPixels(0, 0, 1, 1, gl.RGBA_INTEGER, gl.UNSIGNED_INT, one);
     return performance.now() - started;
   };
   // Let the page breathe between draws, so the interface keeps updating.

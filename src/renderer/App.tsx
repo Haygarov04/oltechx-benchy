@@ -342,7 +342,7 @@ function Check() {
                 <div className="row" style={{ flexWrap: "wrap" }}>
                   <button type="button" className="btn btn-primary btn-lg" onClick={() => void window.olx.open(`${stage.uploaded!.sellUrl}&chasti=all`)}>
                     <PlusIcon aria-hidden="true" />
-                    {hardware.laptop ? t("listingLaptop") : t("listingWhole")}
+                    {phone(hardware) ? t("listingPhone") : hardware.laptop ? t("listingLaptop") : t("listingWhole")}
                   </button>
                   {chosen.length > 0 && (
                     <button
