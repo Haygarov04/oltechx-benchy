@@ -3,8 +3,9 @@ import si from "systeminformation";
 import type { DetectedPart, Hardware } from "../shared/types";
 
 /**
- * Частите, както ги вижда системата. Имената са точно като в Windows, а моделите от каталога
- * ги намира сайтът. Нищо лично не се чете: без потребителско име, файлове и серийни номера.
+ * The parts as the operating system reports them. Names are kept exactly as Windows shows them;
+ * the site matches them to its catalog. Nothing personal is read: no user name, files or serial numbers.
+ * Health labels stay in Bulgarian because the site displays them; the app translates them for display.
  */
 
 const GB = 1024 ** 3;
@@ -47,7 +48,7 @@ export async function scanHardware(): Promise<Hardware> {
   const parts: DetectedPart[] = [];
   const laptop = Boolean(battery?.hasBattery);
 
-  // Процесор
+  // Processor
   const cpuName = cleanCpu(`${/^(intel|amd|apple)$/i.test(cpu.manufacturer) && !cpu.brand.toLowerCase().startsWith(cpu.manufacturer.toLowerCase()) ? `${cpu.manufacturer} ` : ""}${cpu.brand}`);
   parts.push({
     slot: "cpu",
@@ -56,7 +57,7 @@ export async function scanHardware(): Promise<Hardware> {
     health: temperature?.main ? { label: "Температура", value: `${Math.round(temperature.main)} °C`, ok: temperature.main < 90 } : null,
   });
 
-  // Видеокарта: отделната, ако има, иначе вградената. Виртуалните адаптери се пропускат.
+  // Graphics: the dedicated card if there is one, otherwise the integrated one. Virtual adapters are skipped.
   const controllers = graphics.controllers.filter((c) => c.model && !VIRTUAL.test(c.model));
   const discrete = controllers.filter((c) => /nvidia|amd|ati|advanced micro/i.test(c.vendor) && !/radeon\(tm\) graphics|vega \d+ graphics/i.test(c.model));
   const gpu = [...(discrete.length ? discrete : controllers)].sort((a, b) => (b.memoryTotal ?? b.vram ?? 0) - (a.memoryTotal ?? a.vram ?? 0))[0];
@@ -70,7 +71,7 @@ export async function scanHardware(): Promise<Hardware> {
     });
   }
 
-  // RAM: модулите заедно, защото така се продават.
+  // RAM: all modules together, because that is how they are sold.
   const modules = memLayout.filter((m) => m.size > 0);
   const capacityGb = Math.round((modules.reduce((sum, m) => sum + m.size, 0) || mem.total) / GB);
   const speeds = modules.map((m) => m.clockSpeed).filter((s): s is number => typeof s === "number" && s > 0);
@@ -82,12 +83,12 @@ export async function scanHardware(): Promise<Hardware> {
     specs: { ddr: types[0]?.toUpperCase() ?? null, capacityGb, modules: modules.length || null, speedMhz: speeds.length ? Math.min(...speeds) : null },
   });
 
-  // Дънната платка се продава отделно само при настолен компютър.
+  // The motherboard is sold separately only from a desktop.
   if (!laptop && board?.model && !/to be filled|default string|system product/i.test(board.model)) {
     parts.push({ slot: "motherboard", name: `${board.manufacturer} ${board.model}`.replace(/\s+/g, " ").trim(), specs: { formFactor: null } });
   }
 
-  // Вътрешните дискове, без флашки и външни.
+  // Internal drives only, no USB sticks or external disks.
   for (const disk of disks.filter((d) => d.size > 16 * GB && !/usb/i.test(d.interfaceType))) {
     parts.push({
       slot: "storage",
@@ -97,12 +98,12 @@ export async function scanHardware(): Promise<Hardware> {
     });
   }
 
-  // Батерията на лаптопа: колко от новия капацитет е останал.
+  // Laptop battery: how much of the original capacity is left.
   if (battery?.hasBattery && battery.designedCapacity > 0) {
     const health = round1(Math.min(100, (battery.maxCapacity / battery.designedCapacity) * 100));
     parts.push({
       slot: "battery",
-      name: `Батерия ${battery.manufacturer || ""}`.trim(),
+      name: (battery.manufacturer || battery.model || "Battery").trim(),
       specs: { healthPct: Math.round(health), cycles: battery.cycleCount || null },
       health: { label: "Капацитет", value: `${Math.round(health)}%`, ok: health >= 80 },
     });

@@ -1,6 +1,6 @@
-# Инсталаторът за Windows се сглобява тук, защото от Mac не може. Пуска се с таг v* (например v0.1.1).
-# Файлът отива в Releases и се сваля безплатно от
-# https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Proverka-Setup.exe
+# Builds the Windows installer, which cannot be built on macOS. Runs on a v* tag (for example v0.2.1)
+# or manually. The file goes to Releases and is downloaded for free from
+# https://github.com/Haygarov04/oltechx-benchy/releases/latest/download/OLTechX-Check-Setup.exe
 name: Windows
 
 on:
@@ -23,11 +23,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run dist:win
-      # Едно издание с всички файлове. electron-builder сам понякога прави две за един таг.
+      # One release with all files. electron-builder on its own sometimes creates two for one tag.
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            release/OLTechX-Proverka-Setup.exe
-            release/OLTechX-Proverka-Setup.exe.blockmap
+            release/OLTechX-Check-Setup.exe
+            release/OLTechX-Check-Setup.exe.blockmap
             release/latest.yml

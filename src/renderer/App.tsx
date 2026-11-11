@@ -7,22 +7,24 @@ import { PartCard } from "./components/part-card";
 import { Scope } from "./components/scope";
 import { type Phase, type Progress, runCheck } from "./engine";
 import { formatRate, SELLABLE } from "./format";
+import { errorKey, type Lang, LangProvider, useLang } from "./i18n";
 
 type Stage =
   | { kind: "home" }
   | { kind: "test"; progress: Progress; startedAt: number }
   | { kind: "done"; results: CheckResults; uploaded: (Uploaded & { passed?: boolean; problems?: string[] }) | null; error: string | null; uploading: boolean };
 
-const STATIONS: { phase: Phase; label: string; Icon: typeof CpuIcon }[] = [
-  { phase: "cpu", label: "Процесор", Icon: CpuIcon },
-  { phase: "gpu", label: "Видеокарта", Icon: GaugeIcon },
-  { phase: "vram", label: "Памет на видеокартата", Icon: MemoryStickIcon },
-];
+const STATIONS = [
+  { phase: "cpu", label: "stationCpu", Icon: CpuIcon },
+  { phase: "gpu", label: "stationGpu", Icon: GaugeIcon },
+  { phase: "vram", label: "stationVram", Icon: MemoryStickIcon },
+] as const satisfies readonly { phase: Phase; label: string; Icon: typeof CpuIcon }[];
 
-/** Колко от паметта на видеокартата да се провери: половината, до 4 GB, за да не се задави системата. */
+/** How much graphics memory to verify: half of it, up to 4 GB, so the system stays responsive. */
 const vramTarget = (hardware: Hardware) => (hardware.vramMb && hardware.vramMb >= 2048 ? Math.min(4096, Math.floor(hardware.vramMb / 2 / 256) * 256) : 1024);
 
 function TestBoard({ progress, startedAt }: { progress: Progress; startedAt: number }) {
+  const { t, lang } = useLang();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 500);
@@ -32,15 +34,15 @@ function TestBoard({ progress, startedAt }: { progress: Progress; startedAt: num
   const elapsed = (now - startedAt) / 1000;
   const remaining = progress.overall > 0.05 ? Math.max(1, Math.round((elapsed * (1 - progress.overall)) / progress.overall)) : null;
   const value = (phase: Phase) => {
-    if (phase === "cpu") return progress.cpuRate ? formatRate(progress.cpuRate) : "…";
-    if (phase === "gpu") return progress.gpuSamples?.length ? formatRate(progress.gpuSamples.at(-1)!) : "загрява…";
+    if (phase === "cpu") return progress.cpuRate ? formatRate(progress.cpuRate, lang) : "…";
+    if (phase === "gpu") return progress.gpuSamples?.length ? formatRate(progress.gpuSamples.at(-1)!, lang) : t("warming");
     return progress.vramTarget ? `${Math.round(progress.vramMb ?? 0)} / ${progress.vramTarget} MB` : "…";
   };
   return (
     <div className="board" style={{ display: "grid", gap: 16 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="display h2">{STATIONS[current]?.label ?? "Проверка"}</div>
-        <div className="mono muted">{remaining ? `още ~${remaining} с` : "започва…"}</div>
+        <div className="display h2">{current >= 0 ? t(STATIONS[current].label) : t("check")}</div>
+        <div className="mono muted">{remaining ? t("remaining", { s: remaining }) : t("starting")}</div>
       </div>
       <span className="meter" role="progressbar" aria-valuenow={Math.round(progress.overall * 100)} style={{ "--fill": `${Math.round(progress.overall * 100)}%` } as CSSProperties} />
       <div className="bus" />
@@ -54,11 +56,11 @@ function TestBoard({ progress, startedAt }: { progress: Progress; startedAt: num
                 <span className="led" />
               </div>
               <div className="silk" style={{ marginTop: 8 }}>
-                {label}
+                {t(label)}
               </div>
-              <div className="station-value">{state === "pending" ? "чака" : value(phase)}</div>
+              <div className="station-value">{state === "pending" ? t("waiting") : value(phase)}</div>
               <div className="muted" style={{ fontSize: 12 }}>
-                {phase === "vram" ? "проверени" : "изчисления в секунда"}
+                {phase === "vram" ? t("verified") : t("perSecond")}
               </div>
             </div>
           );
@@ -66,19 +68,41 @@ function TestBoard({ progress, startedAt }: { progress: Progress; startedAt: num
       </div>
       <div>
         <div className="row silk" style={{ justifyContent: "space-between" }}>
-          <span>Видеокарта под натоварване</span>
-          <span>{progress.gpuSamples?.length ?? 0} / 30 с</span>
+          <span>{t("underLoad")}</span>
+          <span>{progress.gpuSamples?.length ?? 0} / 30 s</span>
         </div>
-        <Scope samples={progress.gpuSamples ?? []} live={progress.phase === "gpu"} />
+        <Scope samples={progress.gpuSamples ?? []} live={progress.phase === "gpu"} label={t("underLoad")} />
       </div>
       <div className="muted" style={{ fontSize: 14 }}>
-        Не затваряй програмата и не пускай игри, докато трае. Компютърът няма да заспи.
+        {t("dontClose")}
       </div>
     </div>
   );
 }
 
+function LangSwitch() {
+  const { lang, setLang } = useLang();
+  return (
+    <div className="row" role="group" aria-label="Language" style={{ gap: 4 }}>
+      {(["bg", "en"] as Lang[]).map((option) => (
+        <button key={option} type="button" className={`btn ${lang === option ? "btn-primary" : "btn-ghost"}`} style={{ height: 30, padding: "0 10px", fontSize: 13 }} aria-pressed={lang === option} onClick={() => setLang(option)}>
+          {option.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function App() {
+  return (
+    <LangProvider>
+      <Check />
+    </LangProvider>
+  );
+}
+
+function Check() {
+  const { t, lang } = useLang();
   const [hardware, setHardware] = useState<Hardware | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [stage, setStage] = useState<Stage>({ kind: "home" });
@@ -87,7 +111,7 @@ export function App() {
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    window.olx.scan().then(setHardware, () => setScanError("Не успяхме да разчетем частите. Пусни програмата пак."));
+    window.olx.scan().then(setHardware, () => setScanError("scanFailed"));
     window.olx.account().then(setAccount, () => setAccount({ connected: false }));
   }, []);
 
@@ -106,7 +130,7 @@ export function App() {
   const onAccount = useCallback(
     (next: Account) => {
       setAccount(next);
-      // Свързал се е след теста: резултатът се качва веднага.
+      // Connected after the test: upload the result right away.
       if (next.connected && stage.kind === "done" && !stage.uploaded && !stage.uploading) void send(stage.results);
     },
     [stage, send],
@@ -136,31 +160,31 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <LogoMark className="logo" />
-        <span className="title">Проверка на устройство</span>
+        <span className="title">{t("appTitle")}</span>
         <span style={{ marginLeft: "auto" }} className="muted">
-          {account?.connected ? `Свързано: ${account.userName}` : "Не е свързано"}
+          {account?.connected ? t("connectedAs", { name: account.userName }) : t("notConnected")}
         </span>
+        <LangSwitch />
       </header>
 
       <main className="main">
         {stage.kind === "home" && (
           <>
             <div>
-              <div className="silk">OLTechX · проверено с програмата</div>
+              <div className="silk">{t("eyebrow")}</div>
               <h1 className="display h1" style={{ marginTop: 6 }}>
-                Провери компютъра
+                {t("homeTitle")}
               </h1>
               <p className="muted" style={{ maxWidth: 640, fontSize: 17 }}>
-                Програмата разпозна частите по-долу. Тестът натоварва процесора и видеокартата около 1,5 минути и проверява всеки резултат за грешки. После избираш какво
-                продаваш и обявата се попълва сама.
+                {t("homeText")}
               </p>
             </div>
             <div className="grid2">
               <div style={{ display: "grid", gap: 12 }}>
-                {scanError && <div className="alert alert-error">{scanError}</div>}
+                {scanError && <div className="alert alert-error">{t("scanFailed")}</div>}
                 {!hardware && !scanError && (
                   <div className="row muted">
-                    <Loader2Icon className="spin" aria-hidden="true" /> Разпознаваме частите…
+                    <Loader2Icon className="spin" aria-hidden="true" /> {t("scanning")}
                   </div>
                 )}
                 {hardware && (
@@ -172,13 +196,13 @@ export function App() {
                 )}
                 {hardware?.onPower === false && (
                   <div className="alert alert-warn row">
-                    <PlugZapIcon aria-hidden="true" size={18} /> Включи лаптопа в зарядно. На батерия той работи по-бавно и резултатът ще е по-нисък.
+                    <PlugZapIcon aria-hidden="true" size={18} /> {t("plugIn")}
                   </div>
                 )}
                 <div>
                   <button type="button" className="btn btn-primary btn-lg" disabled={!hardware} onClick={() => void start()}>
                     <ShieldCheckIcon aria-hidden="true" />
-                    Започни проверката
+                    {t("start")}
                   </button>
                 </div>
               </div>
@@ -197,17 +221,20 @@ export function App() {
                   {stage.uploaded?.passed === false ? <ShieldAlertIcon aria-hidden="true" /> : <ShieldCheckIcon aria-hidden="true" />}
                 </span>
                 <div>
-                  <h1 className="display h1">{stage.uploaded ? (stage.uploaded.passed === false ? "Проверката не мина" : "Проверката мина") : "Тестът свърши"}</h1>
+                  <h1 className="display h1">{stage.uploaded ? (stage.uploaded.passed === false ? t("failed") : t("passed")) : t("testDone")}</h1>
                   <div className="muted">
-                    Процесор {formatRate(stage.results.cpu.multi)} изч./с · видеокарта {stage.results.gpu.tested ? `${formatRate(stage.results.gpu.opsPerSec)} изч./с` : "не е тествана"} ·{" "}
-                    {stage.results.cpu.errors + stage.results.gpu.errors + stage.results.vram.errors} грешки
+                    {t("summary", {
+                      cpu: formatRate(stage.results.cpu.multi, lang),
+                      gpu: stage.results.gpu.tested ? t("rate", { value: formatRate(stage.results.gpu.opsPerSec, lang) }) : t("gpuNotTested"),
+                      errors: stage.results.cpu.errors + stage.results.gpu.errors + stage.results.vram.errors,
+                    })}
                   </div>
                 </div>
               </div>
               {stage.uploaded && (
                 <div className="code">
                   <div className="silk" style={{ color: "inherit", opacity: 0.8 }}>
-                    Код за снимката
+                    {t("photoCode")}
                   </div>
                   <div className="code-value">{stage.uploaded.code}</div>
                 </div>
@@ -225,8 +252,8 @@ export function App() {
             {!account?.connected && !stage.uploaded && (
               <div className="grid2">
                 <div className="card">
-                  <div className="display h2">Остава само да го качиш</div>
-                  <p className="muted">Свържи програмата с акаунта си и резултатът ще се качи сам. Нищо не се губи.</p>
+                  <div className="display h2">{t("almost")}</div>
+                  <p className="muted">{t("almostText")}</p>
                 </div>
                 <AccountCard account={account} onChange={onAccount} />
               </div>
@@ -234,14 +261,14 @@ export function App() {
 
             {stage.uploading && (
               <div className="row muted">
-                <Loader2Icon className="spin" aria-hidden="true" /> Качваме резултата…
+                <Loader2Icon className="spin" aria-hidden="true" /> {t("uploading")}
               </div>
             )}
             {stage.error && (
               <div className="alert alert-error row" style={{ justifyContent: "space-between" }}>
-                <span>{stage.error}</span>
+                <span>{t(errorKey(stage.error))}</span>
                 <button type="button" className="btn" onClick={() => void send(stage.results)}>
-                  Опитай пак
+                  {t("retry")}
                 </button>
               </div>
             )}
@@ -250,13 +277,13 @@ export function App() {
               <>
                 <div className="row" style={{ gap: 8 }}>
                   <CameraIcon aria-hidden="true" size={18} color="var(--primary)" />
-                  <span>Снимай компютъра така, че кодът да се вижда на екрана. Снимката влиза в обявата.</span>
+                  <span>{t("photoHint")}</span>
                 </div>
-                {/* При лаптоп частите са запоени и се продава целият. */}
+                {/* On a laptop the parts are soldered, so the whole laptop is sold. */}
                 {!hardware.laptop && (
                 <div>
                   <div className="display h2" style={{ marginBottom: 10 }}>
-                    Какво продаваш? Целия компютър или отметни части
+                    {t("whatSelling")}
                   </div>
                   <div className="parts">
                     {sellable.map(({ p, i }) => (
@@ -274,7 +301,7 @@ export function App() {
                 <div className="row" style={{ flexWrap: "wrap" }}>
                   <button type="button" className="btn btn-primary btn-lg" onClick={() => void window.olx.open(`${stage.uploaded!.sellUrl}&chasti=all`)}>
                     <PlusIcon aria-hidden="true" />
-                    {hardware.laptop ? "Обява за лаптопа" : "Обява за целия компютър"}
+                    {hardware.laptop ? t("listingLaptop") : t("listingWhole")}
                   </button>
                   {chosen.length > 0 && (
                     <button
@@ -283,12 +310,12 @@ export function App() {
                       onClick={() => void window.olx.open(`${stage.uploaded!.sellUrl}&chasti=${[...chosen].sort((a, b) => a - b).join(",")}`)}
                     >
                       <PlusIcon aria-hidden="true" />
-                      {chosen.length === 1 ? "Обява за избраната част" : `Комплект от ${chosen.length} части`}
+                      {chosen.length === 1 ? t("listingOne") : t("listingSet", { n: chosen.length })}
                     </button>
                   )}
                   <button type="button" className="btn btn-ghost btn-lg" onClick={() => void window.olx.open(stage.uploaded!.url)}>
                     <ExternalLinkIcon aria-hidden="true" />
-                    Виж резултата в сайта
+                    {t("viewOnSite")}
                   </button>
                 </div>
               </>
@@ -297,7 +324,7 @@ export function App() {
             <div>
               <button type="button" className="btn btn-ghost" onClick={() => setStage({ kind: "home" })}>
                 <RotateCcwIcon aria-hidden="true" />
-                Нова проверка
+                {t("newCheck")}
               </button>
             </div>
           </>

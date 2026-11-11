@@ -1,4 +1,4 @@
-/** Същите форми като в сайта (src/lib/device-check.ts). Сървърът ги проверява отново. */
+/** The same shapes as on the site (src/lib/device-check.ts). The server validates them again. */
 
 export type DeviceInfo = {
   kind: "computer" | "phone" | "tablet";
@@ -33,7 +33,7 @@ export type CheckResults = {
 export type Hardware = {
   device: DeviceInfo;
   parts: DetectedPart[];
-  /** На зарядно ли е лаптопът. null за настолен компютър. */
+  /** Whether the laptop is plugged in. null for a desktop. */
   onPower: boolean | null;
   laptop: boolean;
   vramMb: number | null;
@@ -44,7 +44,7 @@ export type Account = { connected: false } | { connected: true; userName: string
 
 export type Uploaded = { id: string; code: string; url: string; sellUrl: string };
 
-/** Какво вижда интерфейсът. Всичко минава през основния процес, интерфейсът няма достъп до мрежата и диска. */
+/** What the interface can do. Everything goes through the main process; the interface has no network or disk access. */
 export type Bridge = {
   scan: () => Promise<Hardware>;
   account: () => Promise<Account>;

@@ -1,6 +1,6 @@
 const site = { name: "OLTechX" };
 
-/** Пистите върху буквите. Същите координати се рисуват в двата цвята, виж по-долу. */
+/** Circuit traces over the letters. The same coordinates are drawn in both colors, see below. */
 const TRACES = [
   "M264 250H300L348 295V341",
   "M141 348H172",
@@ -49,9 +49,9 @@ const LETTERS =
   "M1192 216H1258L1340 350L1250 492H1186L1290 350ZM1395 216H1452L1365 330H1330ZM1330 368H1362L1450 492H1395Z";
 
 /**
- * Логото на OLTechX като вектор: букви с пътеки от платка.
- * Пистите се рисуват два пъти: със светлия цвят под буквите, за да личат извън тях,
- * и с цвета на фона върху буквите, за да изглеждат издълбани.
+ * The OLTechX logo as a vector: letters with circuit-board traces.
+ * Traces are drawn twice: in the light color under the letters so they show outside them,
+ * and in the background color over the letters so they look engraved.
  */
 export function LogoMark({
   className,

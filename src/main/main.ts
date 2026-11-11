@@ -3,11 +3,11 @@ import { app, BrowserWindow, ipcMain, powerSaveBlocker, shell } from "electron";
 import { account, cancelPairing, claim, logout, SITE, startBrowserPairing, upload } from "./account";
 import { scanHardware } from "./hardware";
 
-// На лаптопи с две видеокарти тестът трябва да върви на отделната.
+// On laptops with two GPUs the test must run on the dedicated one.
 app.commandLine.appendSwitch("force_high_performance_gpu");
 
 let window: BrowserWindow | null = null;
-let deviceName = "Компютър";
+let deviceName = "PC";
 let awake: number | null = null;
 
 function createWindow() {
@@ -16,7 +16,7 @@ function createWindow() {
     height: 780,
     minWidth: 900,
     minHeight: 640,
-    title: "OLTechX Проверка",
+    title: "OLTechX Check",
     backgroundColor: "#f6f5f1",
     autoHideMenuBar: true,
     webPreferences: {
@@ -24,12 +24,12 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      // Тестът не бива да забавя, ако прозорецът е зад друг.
+      // The test must not slow down when the window is behind another one.
       backgroundThrottling: false,
     },
   });
   void window.loadFile(join(__dirname, "renderer", "index.html"));
-  // Връзките водят само към сайта на OLTechX и се отварят в браузъра.
+  // Links only go to the OLTechX site and open in the default browser.
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(SITE)) void shell.openExternal(url);
     return { action: "deny" };

@@ -1,7 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// Интерфейсът се зарежда от файл, затова пътищата са относителни.
+// The interface is loaded from a file, so paths are relative.
 export default defineConfig({
   root: "src/renderer",
   base: "./",

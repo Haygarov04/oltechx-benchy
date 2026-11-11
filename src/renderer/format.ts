@@ -1,46 +1,51 @@
 import type { DetectedPart, PartSlot } from "../shared/types";
+import type { Lang, T } from "./i18n";
 
-export function formatRate(value: number): string {
-  if (value >= 1e12) return `${(value / 1e12).toLocaleString("bg-BG", { maximumFractionDigits: 2 })} трлн.`;
-  if (value >= 1e9) return `${(value / 1e9).toLocaleString("bg-BG", { maximumFractionDigits: 1 })} млрд.`;
-  if (value >= 1e6) return `${(value / 1e6).toLocaleString("bg-BG", { maximumFractionDigits: 0 })} млн.`;
-  return Math.round(value).toLocaleString("bg-BG");
+export function formatRate(value: number, lang: Lang): string {
+  const locale = lang === "bg" ? "bg-BG" : "en-GB";
+  const [trillion, billion, million] = lang === "bg" ? ["трлн.", "млрд.", "млн."] : ["T", "B", "M"];
+  if (value >= 1e12) return `${(value / 1e12).toLocaleString(locale, { maximumFractionDigits: 2 })} ${trillion}`;
+  if (value >= 1e9) return `${(value / 1e9).toLocaleString(locale, { maximumFractionDigits: 1 })} ${billion}`;
+  if (value >= 1e6) return `${(value / 1e6).toLocaleString(locale, { maximumFractionDigits: 0 })} ${million}`;
+  return Math.round(value).toLocaleString(locale);
 }
 
-export const SLOT_LABEL: Record<PartSlot, string> = {
-  cpu: "Процесор",
-  gpu: "Видеокарта",
-  ram: "RAM памет",
-  motherboard: "Дънна платка",
-  storage: "Диск",
-  battery: "Батерия",
-  phone: "Телефон",
-};
+const SLOT_KEY = {
+  cpu: "slotCpu",
+  gpu: "slotGpu",
+  ram: "slotRam",
+  motherboard: "slotMotherboard",
+  storage: "slotStorage",
+  battery: "slotBattery",
+  phone: "slotPhone",
+} as const satisfies Record<PartSlot, Parameters<T>[0]>;
 
-/** Частите, които се продават отделно. Батерията на лаптопа не е сред тях. */
+export const slotLabel = (slot: PartSlot, t: T) => t(SLOT_KEY[slot]);
+
+/** Parts that can be sold on their own. A laptop battery is not one of them. */
 export const SELLABLE: PartSlot[] = ["cpu", "gpu", "ram", "motherboard", "storage"];
 
-const gb = (n: unknown) => {
+const size = (n: unknown) => {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return null;
-  return v >= 1000 ? `${(v / 1000).toLocaleString("bg-BG", { maximumFractionDigits: 1 })} TB` : `${Math.round(v)} GB`;
+  return v >= 1000 ? `${Math.round(v / 100) / 10} TB` : `${Math.round(v)} GB`;
 };
 
-/** Същото кратко описание като в сайта. */
-export function partSummary(part: DetectedPart): string {
+/** A one-line summary of the key numbers, the same as on the site. */
+export function partSummary(part: DetectedPart, t: T): string {
   const s = part.specs;
   const join = (...items: unknown[]) => items.filter((item): item is string => typeof item === "string" && item.length > 0).join(" · ");
   switch (part.slot) {
     case "cpu":
-      return join(s.cores ? `${s.cores} ядра` : null, s.threads ? `${s.threads} нишки` : null, s.boostMhz ? `до ${(Number(s.boostMhz) / 1000).toFixed(1)} GHz` : null);
+      return join(s.cores ? t("cores", { n: Number(s.cores) }) : null, s.threads ? t("threads", { n: Number(s.threads) }) : null, s.boostMhz ? t("upTo", { n: (Number(s.boostMhz) / 1000).toFixed(1) }) : null);
     case "gpu":
-      return join(s.vramGb ? `${s.vramGb} GB видео памет` : null, typeof s.driver === "string" ? `драйвер ${s.driver}` : null);
+      return join(s.vramGb ? t("videoMemory", { n: Number(s.vramGb) }) : null, typeof s.driver === "string" ? t("driver", { v: s.driver }) : null);
     case "ram":
-      return join(gb(s.capacityGb), typeof s.ddr === "string" ? s.ddr : null, s.speedMhz ? `${s.speedMhz} MHz` : null, s.modules ? `${s.modules} ${Number(s.modules) === 1 ? "модул" : "модула"}` : null);
+      return join(size(s.capacityGb), typeof s.ddr === "string" ? s.ddr : null, s.speedMhz ? `${s.speedMhz} MHz` : null, s.modules ? t(Number(s.modules) === 1 ? "module" : "modules", { n: Number(s.modules) }) : null);
     case "storage":
-      return join(typeof s.kind === "string" ? s.kind : null, gb(s.capacityGb));
+      return join(typeof s.kind === "string" ? s.kind : null, size(s.capacityGb));
     case "battery":
-      return join(s.healthPct ? `${s.healthPct}% от новата` : null, s.cycles ? `${s.cycles} цикъла` : null);
+      return join(s.healthPct ? t("ofNew", { n: Number(s.healthPct) }) : null, s.cycles ? t("cycles", { n: Number(s.cycles) }) : null);
     default:
       return "";
   }

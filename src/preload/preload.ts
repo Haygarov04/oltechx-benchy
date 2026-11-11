@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { Account, Bridge } from "../shared/types";
 
-/** Мостът: интерфейсът вика само тези функции. Няма достъп до Node, мрежата или файловете. */
+/** The bridge: the interface can only call these functions. It has no access to Node, the network or files. */
 const bridge: Bridge = {
   scan: () => ipcRenderer.invoke("scan"),
   account: () => ipcRenderer.invoke("account"),

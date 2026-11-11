@@ -4,11 +4,14 @@ import { app, safeStorage } from "electron";
 import type { Account, CheckResults, DetectedPart, DeviceInfo, Uploaded } from "../shared/types";
 
 /**
- * Връзката със сайта. Ключът се пази криптиран от системата (DPAPI на Windows, Keychain на Mac),
- * а без „Запомни ме“ стои само в паметта и изчезва със затварянето на програмата.
+ * The link to the OLTechX site. The token is encrypted by the OS (DPAPI on Windows, Keychain on macOS).
+ * Without "Remember me" it lives only in memory and is gone when the app closes.
+ * Errors are returned as codes (error.*) and translated by the interface.
  */
 
 export const SITE = (process.env.OLTECHX_URL ?? "https://www.oltechx.com").replace(/\/$/, "");
+
+type Failure = { error: string };
 
 let token: string | null = null;
 let remembered = false;
@@ -49,7 +52,7 @@ async function call(path: string, init: { method?: string; body?: unknown; auth?
   return { status: response.status, data };
 }
 
-const offline = { error: "Няма връзка със сайта. Провери интернета." };
+const offline: Failure = { error: "error.offline" };
 
 export async function account(): Promise<Account> {
   load();
@@ -57,7 +60,7 @@ export async function account(): Promise<Account> {
   try {
     const { status, data } = await call("/api/device/me", { auth: true });
     if (status === 401) {
-      // Изключено от сайта: например от Настройки или след продажба на устройството.
+      // Disconnected on the site: from Settings, or because the device was sold.
       forget();
       return { connected: false };
     }
@@ -72,10 +75,10 @@ export async function logout() {
   forget();
 }
 
-export async function claim(code: string, deviceName: string, remember: boolean): Promise<Account | { error: string }> {
+export async function claim(code: string, deviceName: string, remember: boolean): Promise<Account | Failure> {
   try {
     const { status, data } = await call("/api/device/pair/claim", { body: { code, deviceName, platform: "windows", remember } });
-    if (status !== 200 || typeof data.token !== "string") return { error: String(data.error ?? "Кодът не става.") };
+    if (status !== 200 || typeof data.token !== "string") return { error: "error.code" };
     save(data.token, remember);
     return { connected: true, userName: String(data.userName ?? ""), remember };
   } catch {
@@ -85,13 +88,13 @@ export async function claim(code: string, deviceName: string, remember: boolean)
 
 let polling: AbortController | null = null;
 
-/** Свързване през браузъра: програмата показва код, сайтът се отваря и човекът потвърждава там. */
+/** Connect through the browser: the app shows a code, the site opens and the user confirms there. */
 export async function startBrowserPairing(
   deviceName: string,
   remember: boolean,
   open: (url: string) => void,
-  done: (result: Account | { error: string }) => void,
-): Promise<{ code: string } | { error: string }> {
+  done: (result: Account | Failure) => void,
+): Promise<{ code: string } | Failure> {
   polling?.abort();
   let start: { status: number; data: Json };
   try {
@@ -99,7 +102,7 @@ export async function startBrowserPairing(
   } catch {
     return offline;
   }
-  if (start.status !== 200) return { error: "Сайтът не отговори. Опитай пак." };
+  if (start.status !== 200) return { error: "error.pairing" };
   const { code, deviceCode, verifyUrl, interval } = start.data as { code: string; deviceCode: string; verifyUrl: string; interval: number };
   open(verifyUrl);
 
@@ -117,12 +120,12 @@ export async function startBrowserPairing(
           save(data.token, remember);
           return done({ connected: true, userName: String(data.userName ?? ""), remember });
         }
-        return done({ error: "Кодът изтече или вече е използван. Опитай пак." });
+        return done({ error: "error.expired" });
       } catch {
-        // Временно без интернет: пробваме пак.
+        // Briefly offline: try again on the next tick.
       }
     }
-    if (!controller.signal.aborted) done({ error: "Времето за свързване изтече. Опитай пак." });
+    if (!controller.signal.aborted) done({ error: "error.timeout" });
   })();
   return { code };
 }
@@ -132,15 +135,15 @@ export function cancelPairing() {
   polling = null;
 }
 
-export async function upload(payload: { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults }): Promise<Uploaded | { error: string }> {
-  if (!token) return { error: "Свържи програмата с акаунта си, за да качиш резултата." };
+export async function upload(payload: { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults }): Promise<Uploaded | Failure> {
+  if (!token) return { error: "error.notConnected" };
   try {
     const { status, data } = await call("/api/device/checks", { body: payload, auth: true });
     if (status === 401) {
       forget();
-      return { error: "Програмата вече не е свързана. Свържи я наново." };
+      return { error: "error.disconnected" };
     }
-    if (status !== 201) return { error: String(data.error ?? "Сайтът не прие резултата.") };
+    if (status !== 201) return { error: "error.upload" };
     return data as unknown as Uploaded;
   } catch {
     return offline;

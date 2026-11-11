@@ -2,15 +2,16 @@
 import type { CheckResults } from "../shared/types";
 
 /**
- * Тестът в браузъра. Всяко изчисление има известен верен отговор, затова грешен резултат
- * значи нестабилен хардуер, а не просто бавен. Числата се пращат на сървъра, който решава.
+ * The stress test. Every calculation has a known correct answer, so a wrong result means unstable
+ * hardware, not just slow hardware. The numbers go to the server, which decides pass or fail.
+ * Failure reasons stay in Bulgarian because the OLTechX site shows them to buyers.
  */
 
 export type Phase = "cpu" | "gpu" | "vram";
 
 export type Progress = {
   phase: Phase;
-  /** От 0 до 1 за целия тест. */
+  /** From 0 to 1 for the whole test. */
   overall: number;
   cpuRate?: number;
   gpuSamples?: number[];
@@ -28,12 +29,12 @@ async function requestAdapter(): Promise<GPUAdapter | null> {
   }
 }
 
-// ── Процесор ───────────────────────────────────────────────────────────────
+// ── Processor ───────────────────────────────────────────────────────────────
 
 const CPU_N = 100_000;
 const CPU_OPS = CPU_N * 7;
 
-/** Същото изчисление като в работниците. Отговорът е предварително известен. */
+/** The same calculation as in the workers. The answer is known in advance. */
 function cpuUnit(seed: number, n: number) {
   let x = seed | 0;
   for (let i = 0; i < n; i++) {
@@ -83,12 +84,12 @@ function runWorkers(count: number, durationMs: number, signal: AbortSignal, onRa
     };
     signal.addEventListener("abort", () => {
       stop();
-      reject(new DOMException("Спряно", "AbortError"));
+      reject(new DOMException("Stopped", "AbortError"));
     });
     workers.forEach((worker, i) => {
       worker.onerror = () => {
         stop();
-        reject(new Error("Тестът на процесора спря."));
+        reject(new Error("The processor test stopped."));
       };
       worker.onmessage = (event: MessageEvent<{ done: boolean; units: number; errors: number; ms: number }>) => {
         Object.assign(state[i], event.data);
@@ -103,7 +104,7 @@ function runWorkers(count: number, durationMs: number, signal: AbortSignal, onRa
   });
 }
 
-// ── Видеокарта ────────────────────────────────────────────────────────────
+// ── Graphics card ────────────────────────────────────────────────────────────
 
 const GROUPS = 1024;
 const INVOCATIONS = GROUPS * 256;
@@ -127,7 +128,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   out[id.x] = x;
 }`;
 
-/** Верният отговор за една клетка, сметнат на процесора. */
+/** The correct answer for one cell, computed on the processor. */
 function gpuReference(index: number, seed: number, iterations: number) {
   let x = (Math.imul((index ^ seed) >>> 0, 747796405) + 2891336453) >>> 0;
   for (let i = 0; i < iterations; i++) {
@@ -168,17 +169,17 @@ async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSig
     return performance.now() - started;
   };
 
-  // Колко работа на едно пускане, за да трае около 25 мс: достатъчно, без да задави системата.
+  // How much work per dispatch so it takes about 25 ms: enough load without freezing the system.
   let iterations = 32;
   for (let i = 0; i < 5; i++) {
     const ms = await dispatch(iterations, 1, false);
     iterations = Math.min(1 << 17, Math.max(16, Math.round((iterations * TARGET_DISPATCH_MS) / Math.max(ms, 0.25))));
   }
 
-  // Загряване: видеокартата вдига честотите си за няколко секунди. Това време не се брои.
+  // Warm-up: the card raises its clocks over a few seconds. This time is not counted.
   const warm = performance.now() + 5000;
   while (performance.now() < warm) {
-    if (signal.aborted) throw new DOMException("Спряно", "AbortError");
+    if (signal.aborted) throw new DOMException("Stopped", "AbortError");
     await dispatch(iterations, 7, false);
   }
 
@@ -192,7 +193,7 @@ async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSig
   let lastCheck = 0;
   const end = performance.now() + durationMs;
   while (performance.now() < end) {
-    if (signal.aborted) throw new DOMException("Спряно", "AbortError");
+    if (signal.aborted) throw new DOMException("Stopped", "AbortError");
     const verify = performance.now() - lastCheck > 1000;
     const seed = (Math.random() * 4294967296) >>> 0;
     const ms = await dispatch(iterations, seed, verify);
@@ -222,7 +223,7 @@ async function gpuStress(device: GPUDevice, durationMs: number, signal: AbortSig
   out.destroy();
   read.destroy();
   params.destroy();
-  // Медианата от секундите е по-стабилна от средното: един бавен момент не сваля резултата.
+  // The median of the seconds is steadier than the mean: one slow moment does not drag the result down.
   const sorted = [...samples].sort((a, b) => a - b);
   const median = sorted.length ? sorted[sorted.length >> 1] : totalMs > 0 ? totalOps / (totalMs / 1000) : 0;
   return { opsPerSec: median, samples, checked, errors };
@@ -256,7 +257,7 @@ fn verify(@builtin(global_invocation_id) id: vec3<u32>) {
   if (wrong > 0u) { atomicAdd(&bad[0], wrong); }
 }`;
 
-/** Записва шаблон в паметта на видеокартата и проверява всяка клетка. Два пъти, с обърнати битове. */
+/** Writes a pattern into graphics memory and verifies every cell. Twice, with inverted bits. */
 async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: number, signal: AbortSignal, onMb: (mb: number) => void) {
   const chunkBytes = Math.floor(Math.min(256 * MB, adapter.limits.maxStorageBufferBindingSize, adapter.limits.maxBufferSize) / 4) * 4;
   const chunkMb = chunkBytes / MB;
@@ -293,7 +294,7 @@ async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: numb
   let done = 0;
   for (const invert of [0, 1]) {
     for (let i = 0; i < buffers.length; i++) {
-      if (signal.aborted) throw new DOMException("Спряно", "AbortError");
+      if (signal.aborted) throw new DOMException("Stopped", "AbortError");
       device.queue.writeBuffer(params, 0, new Uint32Array([0x9e3779b9 ^ (i * 7919), chunkBytes / 4, invert, 0]));
       const group = device.createBindGroup({
         layout,
@@ -327,11 +328,11 @@ async function memoryTest(device: GPUDevice, adapter: GPUAdapter, targetMb: numb
   return { tested: true, testedMb: buffers.length * chunkMb, errors };
 }
 
-// ── Целият тест ───────────────────────────────────────────────────────────
+// ── The whole test ───────────────────────────────────────────────────────────
 
 const NO_GPU = { tested: false, opsPerSec: 0, samples: [] as number[], checked: 0, errors: 0 };
 
-/** Целият тест. vramTargetMb е колко от паметта на видеокартата да се провери. */
+/** The whole test. vramTargetMb is how much graphics memory to verify. */
 export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) => void, vramTargetMb: number): Promise<CheckResults> {
   const started = performance.now();
   let hiddenMs = 0;
@@ -362,7 +363,7 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
       }
     }
 
-    // Програмата има време: по-дълги етапи дават по-стабилни числа. Загряването на картата е 5 секунди.
+    // The app has time: longer stages give steadier numbers. The graphics warm-up is 5 seconds.
     const singleMs = 6000;
     const multiMs = gpuDevice ? 15_000 : 40_000;
     const gpuMs = gpuDevice ? 30_000 : 0;

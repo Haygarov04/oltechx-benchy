@@ -1,8 +1,8 @@
 {
-  "name": "oltechx-proverka",
-  "productName": "OLTechX Проверка",
-  "version": "0.1.0",
-  "description": "Проверка на компютър за обява в OLTechX: разпознава частите и ги тества под натоварване.",
+  "name": "oltechx-check",
+  "productName": "OLTechX Check",
+  "version": "0.2.0",
+  "description": "Checks a PC before you sell it on OLTechX: detects the parts, stress-tests them and fills in the listing.",
   "author": "OLTechX <oltechx@gmail.com>",
   "license": "MIT",
   "private": true,
@@ -42,9 +42,9 @@
     "url": "https://github.com/Haygarov04/oltechx-benchy.git"
   },
   "build": {
-    "appId": "com.oltechx.proverka",
-    "productName": "OLTechX Проверка",
-    "executableName": "OLTechXProverka",
+    "appId": "com.oltechx.check",
+    "productName": "OLTechX Check",
+    "executableName": "OLTechXCheck",
     "files": [
       "dist/**",
       "package.json"
@@ -63,13 +63,18 @@
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "OLTechX-Proverka-Setup.${ext}"
+      "artifactName": "OLTechX-Check-Setup.${ext}"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
       "deleteAppDataOnUninstall": true,
-      "shortcutName": "OLTechX Проверка"
+      "shortcutName": "OLTechX Check",
+      "multiLanguageInstaller": true,
+      "installerLanguages": [
+        "en_US",
+        "bg_BG"
+      ]
     },
     "mac": {
       "target": [

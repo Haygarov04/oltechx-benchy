@@ -1,5 +1,5 @@
-/** Скоростта на видеокартата секунда по секунда. Равна линия значи, че не забавя от топлина. */
-export function Scope({ samples, slots = 30, live = false }: { samples: number[]; slots?: number; live?: boolean }) {
+/** Graphics speed second by second. A flat line means it does not throttle from heat. */
+export function Scope({ samples, slots = 30, live = false, label }: { samples: number[]; slots?: number; live?: boolean; label: string }) {
   const width = 300;
   const height = 90;
   const max = Math.max(...samples, 1) * 1.18;
@@ -8,7 +8,7 @@ export function Scope({ samples, slots = 30, live = false }: { samples: number[]
   const line = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const last = points.at(-1);
   return (
-    <svg className="scope" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="Скоростта на видеокартата през теста">
+    <svg className="scope" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label}>
       <defs>
         <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: "var(--primary)", stopOpacity: 0.22 }} />

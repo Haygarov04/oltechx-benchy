@@ -1,4 +1,4 @@
-/* Цветовете и шрифтовете са като в сайта, за да се усеща като част от OLTechX. */
+/* Colors and fonts match the OLTechX site so the app feels like part of it. */
 :root {
   --bg: #f6f5f1;
   --card: #ffffff;
@@ -256,7 +256,7 @@ button {
   color: var(--danger);
 }
 
-/* Части като чипове: иконка-„матрица“ с крачета, име и характеристики. */
+/* Parts as chips: a die icon with pins, a name and the key specs. */
 .parts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -377,7 +377,7 @@ button.part {
   height: 14px;
 }
 
-/* Етапите на теста като части от платка: светват един след друг. */
+/* Test stages as parts on a circuit board: they light up one after another. */
 .board {
   border: 1px solid var(--border);
   border-radius: 16px;
