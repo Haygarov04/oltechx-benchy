@@ -173,7 +173,7 @@ function Check() {
             <div>
               <div className="silk">{t("eyebrow")}</div>
               <h1 className="display h1" style={{ marginTop: 6 }}>
-                {t("homeTitle")}
+                {t(hardware?.device.platform?.startsWith("macOS") ? "homeTitleMac" : "homeTitle")}
               </h1>
               <p className="muted" style={{ maxWidth: 640, fontSize: 17 }}>
                 {t("homeText")}
@@ -185,6 +185,15 @@ function Check() {
                 {!hardware && !scanError && (
                   <div className="row muted">
                     <Loader2Icon className="spin" aria-hidden="true" /> {t("scanning")}
+                  </div>
+                )}
+                {hardware && (
+                  <div className="card row" style={{ padding: "14px 18px" }}>
+                    <div>
+                      <div className="silk">{t("computer")}</div>
+                      <div style={{ fontWeight: 700, fontSize: 20 }}>{hardware.computerName ?? t("customBuild")}</div>
+                      {hardware.wholeOnly && <div className="muted" style={{ fontSize: 13 }}>{t("wholeOnlyHint")}</div>}
+                    </div>
                   </div>
                 )}
                 {hardware && (
@@ -279,8 +288,8 @@ function Check() {
                   <CameraIcon aria-hidden="true" size={18} color="var(--primary)" />
                   <span>{t("photoHint")}</span>
                 </div>
-                {/* On a laptop the parts are soldered, so the whole laptop is sold. */}
-                {!hardware.laptop && (
+                {/* Macs and laptops have soldered parts, so the whole device is sold. */}
+                {!hardware.wholeOnly && (
                 <div>
                   <div className="display h2" style={{ marginBottom: 10 }}>
                     {t("whatSelling")}

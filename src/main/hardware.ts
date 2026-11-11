@@ -1,4 +1,6 @@
+import { execFile } from "node:child_process";
 import { hostname } from "node:os";
+import { promisify } from "node:util";
 import si from "systeminformation";
 import type { DetectedPart, Hardware } from "../shared/types";
 
@@ -8,7 +10,58 @@ import type { DetectedPart, Hardware } from "../shared/types";
  * Health labels stay in Bulgarian because the site displays them; the app translates them for display.
  */
 
+const run = promisify(execFile);
 const GB = 1024 ** 3;
+
+/** The marketing name of a Mac, for example "MacBook Air (15-inch, M5)". */
+async function macModelName(): Promise<string | null> {
+  if (process.platform !== "darwin") return null;
+  try {
+    const { stdout } = await run("ioreg", ["-arc", "IOPlatformDevice", "-k", "product-name"], { timeout: 4000 });
+    const data = stdout.match(/<key>product-name<\/key>\s*<data>([\s\S]*?)<\/data>/)?.[1];
+    if (data) return Buffer.from(data.replace(/\s+/g, ""), "base64").toString("utf8").replace(/\0/g, "").trim() || null;
+  } catch {
+    // Older macOS without the name: fall back to the short model name below.
+  }
+  try {
+    const { stdout } = await run("system_profiler", ["SPHardwareDataType", "-json"], { timeout: 8000 });
+    return (JSON.parse(stdout).SPHardwareDataType?.[0]?.machine_name as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+const VENDORS: [RegExp, string][] = [
+  [/micro-star|^msi/i, "MSI"],
+  [/asustek|^asus/i, "ASUS"],
+  [/^dell/i, "Dell"],
+  [/lenovo/i, "Lenovo"],
+  [/hewlett|^hp/i, "HP"],
+  [/^acer/i, "Acer"],
+  [/gigabyte/i, "Gigabyte"],
+  [/microsoft/i, "Microsoft"],
+  [/samsung/i, "Samsung"],
+  [/huawei/i, "Huawei"],
+  [/razer/i, "Razer"],
+  [/apple/i, "Apple"],
+];
+/** Brands that sell complete desktops. Other makers' desktops are usually custom builds with a board name. */
+const PREBUILT = new Set(["Dell", "HP", "Lenovo", "Acer", "Apple", "Microsoft"]);
+const GENERIC = /to be filled|system product|default string|o\.?e\.?m|not applicable|not specified|^\s*$|^0+$/i;
+
+/**
+ * The model of a laptop or a ready-made PC, for example "Lenovo Legion 5 15ACH6H" or "Dell XPS 15 9520".
+ * Lenovo keeps the real name in "version". A custom-built desktop has no model: null.
+ */
+function pcModelName(system: si.Systeminformation.SystemData | null, laptop: boolean): string | null {
+  if (!system) return null;
+  const vendor = VENDORS.find(([pattern]) => pattern.test(system.manufacturer))?.[1] ?? null;
+  if (!vendor || (!laptop && !PREBUILT.has(vendor))) return null;
+  const candidates = [vendor === "Lenovo" ? system.version : null, system.model];
+  const model = candidates.find((c): c is string => Boolean(c && !GENERIC.test(c) && !/^ms-\w+$/i.test(c)));
+  if (!model) return null;
+  return model.toLowerCase().startsWith(vendor.toLowerCase()) ? model.trim() : `${vendor} ${model.trim()}`;
+}
 const VIRTUAL = /microsoft basic|remote|virtual|parsec|citrix|vmware|hyper-v|displaylink|idd/i;
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -32,7 +85,7 @@ function smart(status: string): { label: string; value: string; ok: boolean } | 
 }
 
 export async function scanHardware(): Promise<Hardware> {
-  const [cpu, graphics, mem, memLayout, board, disks, battery, os, system, temperature] = await Promise.all([
+  const [cpu, graphics, mem, memLayout, board, disks, battery, os, system, temperature, macName] = await Promise.all([
     si.cpu(),
     si.graphics(),
     si.mem(),
@@ -43,6 +96,7 @@ export async function scanHardware(): Promise<Hardware> {
     si.osInfo(),
     si.system().catch(() => null),
     si.cpuTemperature().catch(() => null),
+    macModelName(),
   ]);
 
   const parts: DetectedPart[] = [];
@@ -111,7 +165,9 @@ export async function scanHardware(): Promise<Hardware> {
 
   const display = graphics.displays.find((d) => d.main) ?? graphics.displays[0];
   const platform = platformName(os.distro, os.release);
-  const model = laptop ? [system?.manufacturer, system?.model].filter(Boolean).join(" ") || null : board?.model || null;
+  // The computer itself: a Mac, a laptop or a ready-made PC. A custom build is known by its parts.
+  const model = macName ?? pcModelName(system, laptop);
+  const mac = process.platform === "darwin";
   return {
     device: {
       kind: "computer",
@@ -128,6 +184,9 @@ export async function scanHardware(): Promise<Hardware> {
     parts,
     onPower: battery?.hasBattery ? battery.acConnected : null,
     laptop,
+    computerName: model,
+    // Macs and laptops are sold whole: their parts are soldered in.
+    wholeOnly: laptop || mac,
     vramMb,
     deviceName: `${hostname()} · ${platform}`.slice(0, 80),
   };

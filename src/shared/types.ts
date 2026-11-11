@@ -36,6 +36,10 @@ export type Hardware = {
   /** Whether the laptop is plugged in. null for a desktop. */
   onPower: boolean | null;
   laptop: boolean;
+  /** "MacBook Air (15-inch, M5)", "Lenovo Legion 5 15ACH6H"; null for a custom-built PC. */
+  computerName: string | null;
+  /** Sold only as a whole device: Macs and laptops. */
+  wholeOnly: boolean;
   vramMb: number | null;
   deviceName: string;
 };
