@@ -4,7 +4,7 @@ import type { DetectedPart, Hardware, PartSlot } from "../../shared/types";
 import { type Progress, STAGES, type StageId } from "../engine";
 import { measure, show } from "../format";
 import { useLang } from "../i18n";
-import { BoardRender } from "./board-render";
+import { BoardView } from "./board-view";
 import { Gauge } from "./gauge";
 import { Scope } from "./scope";
 
@@ -91,7 +91,14 @@ export function TestBench({ progress, startedAt, hardware }: { progress: Progres
           <span className="meter" role="progressbar" aria-valuenow={Math.round(progress.overall * 100)} style={{ "--fill": `${Math.round(progress.overall * 100)}%` } as CSSProperties} />
         </div>
         <div className="bench-board">
-          <BoardRender parts={hardware.parts} active={meta.slot} label={t(`stage_${progress.stage}`)} />
+          <BoardView
+            parts={hardware.parts}
+            kind={hardware.device.kind === "phone" ? "phone" : hardware.wholeOnly ? "laptop" : "desktop"}
+            active={meta.slot}
+            heat={Math.min(1, progress.overall * 2 + 0.3)}
+            paused={meta.slot === "gpu" || meta.slot === "ram"}
+            label={t(`stage_${progress.stage}`)}
+          />
         </div>
         <div className="readout">
           <Gauge fraction={fraction} value={reading.value} unit={reading.unit} label={t(`stage_${progress.stage}`)} />

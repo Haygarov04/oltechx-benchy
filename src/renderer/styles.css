@@ -885,7 +885,11 @@ button.part:hover {
 }
 
 .board-stage {
+  height: 440px;
   margin: 10px 0 8px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 55%, #10203f, #05070c 72%);
 }
 
 .board-canvas {
@@ -897,6 +901,9 @@ button.part:hover {
 
 .bench-board {
   height: 330px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 55%, #10203f, #05070c 72%);
 }
 
 .bench-board .board-render {

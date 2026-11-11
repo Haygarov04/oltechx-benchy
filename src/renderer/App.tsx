@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Account, CheckResults, Hardware, Uploaded } from "../shared/types";
 import { AccountCard } from "./components/account-card";
 import { LogoMark } from "./components/logo-mark";
-import { BoardRender } from "./components/board-render";
+import { BoardView } from "./components/board-view";
 import { deviceSlug, Render } from "./components/render";
 import { PartCard } from "./components/part-card";
 import { PartFocus } from "./components/part-focus";
@@ -34,6 +34,13 @@ type Stage =
   | { kind: "done"; results: CheckResults; uploaded: (Uploaded & { passed?: boolean; problems?: string[] }) | null; error: string | null; uploading: boolean };
 
 const phone = (hardware: Hardware) => hardware.device.kind === "phone";
+
+/** Which board the parts sit on: a phone board, a laptop or Mac logic board, or a desktop motherboard. */
+export const boardKind = (hardware: Hardware) => {
+  // For checking the other boards on one machine: open the app with #board=desktop or #board=phone.
+  const forced = location.hash.match(/board=(desktop|laptop|phone)/)?.[1] as "desktop" | "laptop" | "phone" | undefined;
+  return forced ?? (phone(hardware) ? "phone" : hardware.wholeOnly ? "laptop" : "desktop");
+};
 
 /** How much graphics memory to verify: half of it, up to 4 GB, so the system stays responsive. A phone shares it with the system. */
 const vramTarget = (hardware: Hardware) =>
@@ -233,7 +240,7 @@ function Check() {
                       <span>{t("boardHint")}</span>
                     </div>
                     <div className="board-stage">
-                      <BoardRender parts={hardware.parts} onSelect={setFocus} label={t("boardTitle")} />
+                      <BoardView parts={hardware.parts} kind={boardKind(hardware)} onSelect={setFocus} label={t("boardTitle")} />
                     </div>
                   </div>
                 )}
