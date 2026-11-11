@@ -17,7 +17,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Account, CheckResults, Hardware, Uploaded } from "../shared/types";
 import { AccountCard } from "./components/account-card";
 import { LogoMark } from "./components/logo-mark";
-import { DeviceIso } from "./components/iso-view";
+import { BoardView } from "./components/board-view";
+import { Gallery } from "./components/gallery";
+import { LiveModel } from "./components/model-view";
 import { PartCard } from "./components/part-card";
 import { PartFocus } from "./components/part-focus";
 import { Results } from "./components/results";
@@ -60,11 +62,13 @@ function LangSwitch() {
 }
 
 export function App() {
-  return (
-    <LangProvider>
-      <Check />
-    </LangProvider>
-  );
+  const [gallery, setGallery] = useState(() => location.hash === "#models");
+  useEffect(() => {
+    const onHash = () => setGallery(location.hash === "#models");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return <LangProvider>{gallery ? <Gallery /> : <Check />}</LangProvider>;
 }
 
 function Check() {
@@ -166,7 +170,7 @@ function Check() {
                 {hardware && (
                   <div className="card plate rise">
                     <div className="plate-model">
-                      <DeviceIso hardware={hardware} />
+                      <LiveModel source={{ hardware }} label={hardware.computerName ?? t("customBuild")} />
                     </div>
                     <div className="plate-text">
                     <div className="silk">{t(phone(hardware) ? "phoneLabel" : "computer")}</div>
@@ -202,6 +206,17 @@ function Check() {
                         {t("wholeOnlyHint")}
                       </p>
                     )}
+                    </div>
+                  </div>
+                )}
+                {hardware && (
+                  <div className="card board-card rise" style={{ animationDelay: "40ms" }}>
+                    <div className="row silk" style={{ justifyContent: "space-between" }}>
+                      <span>{t("boardTitle")}</span>
+                      <span>{t("boardHint")}</span>
+                    </div>
+                    <div className="board-stage">
+                      <BoardView parts={hardware.parts} onSelect={setFocus} label={t("boardTitle")} />
                     </div>
                   </div>
                 )}

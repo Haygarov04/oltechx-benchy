@@ -1,16 +1,16 @@
 import type { CheckResults, DetectedPart, Hardware, PartSlot } from "../../shared/types";
 import { show, stability } from "../format";
 import { useLang } from "../i18n";
-import { PartIso } from "./iso-view";
+import { PartPicture } from "./model-view";
 import { Scope } from "./scope";
 
 type Row = { label: string; value: string; bad?: boolean; good?: boolean };
 
 function MetricCard({ part, title, rows, note, delay, chart }: { part: DetectedPart; title: string; rows: Row[]; note?: string; delay: number; chart?: { samples: number[]; label: string } }) {
   return (
-    <div className="card metric-card rise iso-host" style={{ animationDelay: `${delay}ms` }}>
+    <div className="card metric-card rise" style={{ animationDelay: `${delay}ms` }}>
       <div className="part-figure">
-        <PartIso part={part} />
+        <PartPicture part={part} />
       </div>
       <div style={{ minWidth: 0 }}>
         <div className="silk">{title}</div>
