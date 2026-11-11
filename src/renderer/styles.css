@@ -1045,6 +1045,400 @@ button.part:hover {
   min-height: 0;
 }
 
+/* ── Isometric figures (the same as on oltechx.com) ─────────────────────── */
+
+:root {
+  --iso-ink: oklch(0.3 0.02 250);
+  --iso-accent: #1f5fe0;
+}
+
+:root[data-theme="dark"] {
+  --iso-ink: oklch(0.86 0.012 250);
+  --iso-accent: oklch(0.76 0.15 232);
+}
+
+.iso-fig {
+  display: block;
+  overflow: visible;
+  stroke-linejoin: round;
+  --iso-line: color-mix(in oklch, var(--iso-ink) 62%, transparent);
+}
+.iso-fig polygon,
+.iso-fig circle,
+.iso-fig path {
+  stroke: var(--iso-line);
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+  transition:
+    stroke 0.2s,
+    fill 0.2s;
+}
+.iso-base .iso-t {
+  fill: color-mix(in oklch, var(--iso-ink) 22%, transparent);
+}
+.iso-base .iso-l {
+  fill: color-mix(in oklch, var(--iso-ink) 12%, transparent);
+}
+.iso-base .iso-r {
+  fill: color-mix(in oklch, var(--iso-ink) 6%, transparent);
+}
+.iso-dark .iso-t {
+  fill: color-mix(in oklch, var(--iso-ink) 12%, var(--surface));
+}
+.iso-dark .iso-l {
+  fill: color-mix(in oklch, var(--iso-ink) 7%, var(--surface));
+}
+.iso-dark .iso-r {
+  fill: color-mix(in oklch, var(--iso-ink) 3%, var(--surface));
+}
+.iso-metal .iso-t {
+  fill: color-mix(in oklch, var(--iso-ink) 42%, var(--surface));
+}
+.iso-metal .iso-l {
+  fill: color-mix(in oklch, var(--iso-ink) 26%, var(--surface));
+}
+.iso-metal .iso-r {
+  fill: color-mix(in oklch, var(--iso-ink) 16%, var(--surface));
+}
+.iso-accent .iso-t {
+  fill: color-mix(in oklch, var(--iso-accent) 55%, transparent);
+}
+.iso-accent .iso-l {
+  fill: color-mix(in oklch, var(--iso-accent) 38%, transparent);
+}
+.iso-accent .iso-r {
+  fill: color-mix(in oklch, var(--iso-accent) 26%, transparent);
+}
+.iso-gold polygon {
+  fill: oklch(0.78 0.12 85);
+  stroke: oklch(0.55 0.1 85);
+}
+.iso-paper polygon {
+  fill: oklch(0.98 0.003 90);
+  stroke: color-mix(in oklch, var(--iso-ink) 40%, transparent);
+}
+.iso-fig path.iso-side {
+  stroke: none;
+}
+.iso-fig ellipse {
+  stroke: var(--iso-line);
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.iso-fig path.iso-grid {
+  fill: none;
+  stroke: color-mix(in oklch, var(--iso-ink) 34%, transparent);
+  stroke-width: 0.45;
+}
+.iso-fig path.iso-grid-gold {
+  stroke: oklch(0.72 0.11 85);
+}
+.iso-fig path.iso-accent-fill {
+  fill: var(--iso-accent);
+  stroke: none;
+}
+.iso-fig path.iso-port {
+  fill: color-mix(in oklch, var(--foreground) 55%, var(--surface));
+  stroke: none;
+}
+.iso-fig path.iso-cable {
+  fill: none;
+  stroke: color-mix(in oklch, var(--iso-ink) 75%, transparent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.iso-fig path.iso-cable-red {
+  stroke: oklch(0.6 0.2 25);
+}
+.iso-fig path.iso-band,
+.iso-fig path.iso-band-inner {
+  fill: none;
+  stroke-linecap: round;
+}
+.iso-fig path.iso-band {
+  stroke: color-mix(in oklch, var(--iso-ink) 70%, var(--surface));
+  stroke-width: 4;
+}
+.iso-fig path.iso-band-inner {
+  stroke: color-mix(in oklch, var(--iso-ink) 30%, var(--surface));
+  stroke-width: 1.6;
+}
+.iso-cup {
+  fill: color-mix(in oklch, var(--iso-ink) 14%, var(--surface));
+  stroke: var(--iso-line);
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.iso-cup-top {
+  fill: color-mix(in oklch, var(--iso-ink) 34%, var(--surface));
+}
+.iso-fig path.iso-knob-mark {
+  stroke: var(--iso-accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.iso-knob {
+  transform-origin: 0 0;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iso-fig path.iso-wave {
+  fill: none;
+  stroke: var(--iso-accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.iso-fig polygon.iso-beam {
+  fill: var(--iso-accent);
+  stroke: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.iso-glass polygon {
+  fill: color-mix(in oklch, var(--iso-accent) 16%, transparent);
+  stroke: color-mix(in oklch, var(--iso-accent) 80%, transparent);
+}
+.iso-fan-ring {
+  fill: color-mix(in oklch, var(--iso-ink) 7%, var(--surface));
+}
+.iso-blade {
+  fill: color-mix(in oklch, var(--iso-ink) 34%, transparent);
+}
+.iso-fan-hub {
+  fill: color-mix(in oklch, var(--iso-ink) 22%, var(--surface));
+}
+.iso-cone-outer {
+  fill: color-mix(in oklch, var(--iso-ink) 18%, var(--surface));
+}
+.iso-cone-inner {
+  fill: color-mix(in oklch, var(--iso-accent) 40%, var(--surface));
+}
+.iso-keys {
+  fill: color-mix(in oklch, var(--iso-ink) 26%, transparent);
+}
+.iso-pad {
+  fill: color-mix(in oklch, var(--iso-ink) 14%, transparent);
+}
+.iso-panel {
+  fill: color-mix(in oklch, var(--iso-ink) 12%, var(--surface));
+}
+.iso-panel-dim {
+  fill: color-mix(in oklch, var(--iso-ink) 8%, var(--surface));
+}
+.iso-screen {
+  fill: color-mix(in oklch, var(--iso-ink) 10%, var(--surface));
+  transition: fill 0.3s;
+}
+
+.iso-move {
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iso-spin {
+  transform-origin: 0 0;
+  animation: fan-spin 1.15s linear infinite;
+  animation-play-state: paused;
+}
+.iso-spin-reverse {
+  animation-direction: reverse;
+}
+.iso-cone {
+  transform-origin: 0 0;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-move {
+  transform: translate(var(--mx), var(--my));
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-spin {
+  animation-play-state: running;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-cone {
+  animation: cone-pulse 0.46s ease-in-out infinite;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-screen {
+  fill: var(--iso-accent);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-led {
+  animation: led-blink 0.7s steps(1) infinite;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-led-2 {
+  animation-delay: 0.23s;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-led-3 {
+  animation-delay: 0.46s;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-fig {
+  --iso-line: var(--iso-accent);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-grid-keys {
+  stroke: var(--iso-accent);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-keys {
+  fill: color-mix(in oklch, var(--iso-accent) 30%, transparent);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-knob {
+  transform: rotate(120deg);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-wave {
+  animation: wave-out 1.25s ease-out infinite;
+  animation-delay: var(--d, 0ms);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-beam {
+  opacity: 0.5;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-blinker {
+  animation: led-blink 0.8s steps(1) infinite;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-blinker-2 {
+  animation-delay: 0.27s;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-blinker-3 {
+  animation-delay: 0.53s;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-led-strip polygon {
+  fill: var(--iso-accent);
+  filter: drop-shadow(0 0 2px var(--iso-accent));
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-lightbar {
+  stroke: var(--iso-accent);
+  stroke-width: 1.4;
+}
+
+.iso-book {
+  --a: var(--book-open);
+  --vx: calc((cos(var(--a)) - 1) * 0.866);
+  --vy: calc((cos(var(--a)) - 1) * 0.5 - sin(var(--a)));
+  transform: matrix(
+    calc(1 + var(--vx) * 0.57735),
+    calc(var(--vy) * 0.57735),
+    var(--vx),
+    calc(1 + var(--vy)),
+    calc(var(--vx) * 12),
+    calc(var(--vy) * 12)
+  );
+  transition: --book-open 0.7s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-book {
+  --book-open: 165deg;
+}
+.iso-fig polygon.iso-book-outer {
+  fill: color-mix(in oklch, var(--iso-accent) 62%, var(--surface));
+  transition: opacity 0s linear 0.17s;
+}
+.iso-fig polygon.iso-book-inner {
+  fill: color-mix(in oklch, var(--iso-ink) 14%, var(--surface));
+}
+.iso-fig polygon.iso-book-art {
+  fill: color-mix(in oklch, var(--iso-accent) 30%, var(--surface));
+  transition: opacity 0s linear 0.17s;
+}
+.iso-fig polygon.iso-book-title {
+  fill: color-mix(in oklch, var(--foreground) 80%, transparent);
+  stroke: none;
+  transition: opacity 0s linear 0.17s;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) :is(.iso-book-outer, .iso-book-art, .iso-book-title) {
+  opacity: 0;
+}
+.iso-shell .iso-t {
+  fill: color-mix(in oklch, white 94%, var(--iso-ink));
+}
+.iso-shell .iso-l {
+  fill: color-mix(in oklch, white 74%, var(--iso-ink));
+}
+.iso-fig path.iso-ring {
+  fill: none;
+  stroke: color-mix(in oklch, var(--iso-ink) 45%, transparent);
+  stroke-width: 0.8;
+}
+.iso-fig path.iso-lightbar {
+  fill: none;
+  stroke: color-mix(in oklch, var(--iso-accent) 55%, transparent);
+  stroke-width: 0.8;
+  transition: stroke 0.2s;
+}
+.iso-still {
+  transform-origin: 0 0;
+}
+.iso-eject {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.iso-host:is(:hover, :focus-visible, .iso-live) .iso-eject {
+  opacity: 1;
+}
+
+
+@keyframes fan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cone-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes led-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes wave-out {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  30% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+.iso-box {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.iso-box .iso-fig {
+  width: 88%;
+  height: 88%;
+}
+
+.bench-figure {
+  height: 280px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 62%),
+    var(--surface-2);
+}
+
+.bench-figure {
+  overflow: hidden;
+}
+
+.bench-figure .iso-fig {
+  width: min(300px, 70%);
+  height: 86%;
+}
+
 /* ── Motion ─────────────────────────────────────────────────────────────── */
 
 @keyframes ring {

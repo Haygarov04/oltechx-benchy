@@ -2,7 +2,7 @@ import { CheckIcon, FingerprintIcon, HeartPulseIcon } from "lucide-react";
 import type { DetectedPart } from "../../shared/types";
 import { partSummary, serialTail, slotLabel } from "../format";
 import { useLang } from "../i18n";
-import { PartPicture } from "./model-view";
+import { PartIso } from "./iso-view";
 
 /** One detected part with its drawing. With onToggle it becomes an "I'm selling this" checkbox. */
 export function PartCard({ part, index, on, onToggle, onOpen }: { part: DetectedPart; index: number; on?: boolean; onToggle?: () => void; onOpen?: () => void }) {
@@ -12,7 +12,7 @@ export function PartCard({ part, index, on, onToggle, onOpen }: { part: Detected
   const body = (
     <>
       <span className="part-figure">
-        <PartPicture part={part} />
+        <PartIso part={part} />
       </span>
       <span style={{ minWidth: 0, flex: 1 }}>
         <span className="silk">{slotLabel(part.slot, t)}</span>
@@ -46,15 +46,15 @@ export function PartCard({ part, index, on, onToggle, onOpen }: { part: Detected
   );
   const style = { animationDelay: `${index * 70}ms` };
   return onToggle ? (
-    <button type="button" className="part" data-on={on} aria-pressed={on} onClick={onToggle} style={style}>
+    <button type="button" className="part iso-host" data-on={on} aria-pressed={on} onClick={onToggle} style={style}>
       {body}
     </button>
   ) : onOpen ? (
-    <button type="button" className="part" onClick={onOpen} style={style}>
+    <button type="button" className="part iso-host" onClick={onOpen} style={style}>
       {body}
     </button>
   ) : (
-    <div className="part" style={style}>
+    <div className="part iso-host" style={style}>
       {body}
     </div>
   );

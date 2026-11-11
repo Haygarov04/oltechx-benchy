@@ -1,9 +1,9 @@
-import { FingerprintIcon, HeartPulseIcon, MoveHorizontalIcon, XIcon } from "lucide-react";
+import { FingerprintIcon, HeartPulseIcon, XIcon } from "lucide-react";
 import { useEffect } from "react";
 import type { DetectedPart } from "../../shared/types";
 import { partSummary, serialTail, slotLabel } from "../format";
 import { useLang } from "../i18n";
-import { LiveModel } from "./model-view";
+import { PartIso } from "./iso-view";
 
 /** A part opened large: a model to turn by hand and everything known about it. */
 export function PartFocus({ part, onClose }: { part: DetectedPart; onClose: () => void }) {
@@ -22,11 +22,7 @@ export function PartFocus({ part, onClose }: { part: DetectedPart; onClose: () =
           <XIcon aria-hidden="true" />
         </button>
         <div className="focus-model">
-          <LiveModel source={{ part }} label={part.name} />
-          <span className="focus-hint">
-            <MoveHorizontalIcon aria-hidden="true" size={14} />
-            {t("dragToTurn")}
-          </span>
+          <PartIso part={part} loop />
         </div>
         <div className="focus-text">
           <div className="silk">{slotLabel(part.slot, t)}</div>
