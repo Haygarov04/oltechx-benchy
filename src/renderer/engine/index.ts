@@ -202,14 +202,18 @@ export async function runCheck(signal: AbortSignal, onProgress: (p: Progress) =>
 
     // ── RAM: bandwidth, latency, then a pattern test that reads back every cell ──
     emit({ stage: "ram", live: null, unit: "bytes" });
-    const copy = await runJob({ kind: "copy", durationMs: ms.copy, bytes: 48 * 1024 * 1024 }, memoryWorkers, signal, (rate) => emit({ live: rate }));
+    // Buffers follow the RAM budget: a phone browser closes a page that takes too much memory.
+    const budget = options.ramTestMb * 1024 * 1024;
+    const copyBytes = Math.max(8 << 20, Math.min(48 << 20, Math.floor(budget / (2 * memoryWorkers) / (1 << 20)) * (1 << 20)));
+    const chaseEntries = Math.min(32 << 20, Math.floor(budget / 8));
+    const copy = await runJob({ kind: "copy", durationMs: ms.copy, bytes: copyBytes }, memoryWorkers, signal, (rate) => emit({ live: rate }));
     emit({ results: { ...state.results, ram: { bandwidth: copy.rate } } });
-    const chase = await runJob({ kind: "chase", durationMs: ms.chase, entries: 32 * 1024 * 1024 }, 1, signal);
+    const chase = await runJob({ kind: "chase", durationMs: ms.chase, entries: chaseEntries }, 1, signal);
     const latencyNs = chase.reports[0]?.ns ?? 0;
     emit({ results: { ...state.results, ram: { bandwidth: copy.rate, latencyNs } } });
-    const perWorker = Math.max(64, Math.floor(options.ramTestMb / memoryWorkers / 64) * 64);
+    const perWorker = Math.max(16, Math.floor(options.ramTestMb / memoryWorkers / 16) * 16);
     const memtest = await runJob(
-      { kind: "memtest", mb: perWorker, chunkMb: 64, seed: 0x5eed },
+      { kind: "memtest", mb: perWorker, chunkMb: Math.min(64, perWorker), seed: 0x5eed },
       memoryWorkers,
       signal,
       (_rate, reports) => emit({ live: reports.reduce((s, r) => s + (r.mb ?? 0), 0), unit: "mb" }),
