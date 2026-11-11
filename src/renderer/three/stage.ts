@@ -38,7 +38,7 @@ function environment(renderer: WebGLRenderer) {
   return texture;
 }
 
-function studio(renderer: WebGLRenderer) {
+export function studio(renderer: WebGLRenderer) {
   const scene = new Scene();
   scene.environment = environment(renderer);
   scene.add(new HemisphereLight("#ffffff", "#3a3f48", 0.5));
@@ -58,7 +58,7 @@ function studio(renderer: WebGLRenderer) {
   return { scene, key, rim, ground };
 }
 
-function makeRenderer(canvas?: HTMLCanvasElement) {
+export function makeRenderer(canvas?: HTMLCanvasElement) {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: !canvas, powerPreference: "low-power" });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;

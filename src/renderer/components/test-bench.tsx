@@ -4,7 +4,7 @@ import type { DetectedPart, Hardware, PartSlot } from "../../shared/types";
 import { type Progress, STAGES, type StageId } from "../engine";
 import { measure, show } from "../format";
 import { useLang } from "../i18n";
-import { LiveModel } from "./model-view";
+import { BoardView } from "./board-view";
 import { Gauge } from "./gauge";
 import { Scope } from "./scope";
 
@@ -86,35 +86,21 @@ export function TestBench({ progress, startedAt, hardware }: { progress: Progres
           </h1>
           <span className="meter" role="progressbar" aria-valuenow={Math.round(progress.overall * 100)} style={{ "--fill": `${Math.round(progress.overall * 100)}%` } as CSSProperties} />
         </div>
-        <div className="stage-visual">
-          <div className="stage-figure" data-hot={meta.slot === "cpu" || progress.stage === "gpu"}>
-            <LiveModel
-              source={{ part: stagePart(hardware, meta.slot) }}
-              active
-              heat={meta.slot === "cpu" || meta.slot === "gpu" ? Math.min(1, progress.overall * 2 + 0.3) : 0}
-              slow={meta.slot === "gpu" || meta.slot === "ram"}
-              label={t(`stage_${progress.stage}`)}
-            />
-          </div>
-          <Gauge fraction={fraction} value={reading.value} unit={reading.unit} label={t(`stage_${progress.stage}`)} />
+        <div className="bench-board">
+          <BoardView parts={hardware.parts} active={meta.slot} heat={Math.min(1, progress.overall * 2 + 0.3)} paused={meta.slot === "gpu" || meta.slot === "ram"} label={t(`stage_${progress.stage}`)} />
         </div>
-        <div>
-          {chart ? (
-            <>
-              <div className="row silk" style={{ justifyContent: "space-between" }}>
-                <span>{t(`stage_${progress.stage}`)}</span>
-                {(progress.stage === "cpu" || progress.stage === "gpu") && <span>{progress.samples.length} s</span>}
-              </div>
-              <Scope samples={progress.samples} slots={progress.stage === "cpu" || progress.stage === "gpu" ? 20 : 24} live label={t(`stage_${progress.stage}`)} />
-            </>
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              {t(`note_${progress.stage}`)}
+        <div className="readout">
+          <Gauge fraction={fraction} value={reading.value} unit={reading.unit} label={t(`stage_${progress.stage}`)} />
+          <div className="readout-chart">
+            <div className="row silk" style={{ justifyContent: "space-between" }}>
+              <span>{t(`note_${progress.stage}`)}</span>
+              {chart && <span>{progress.samples.length}</span>}
+            </div>
+            <Scope samples={progress.samples} slots={24} live label={t(`stage_${progress.stage}`)} />
+            <p className="muted" style={{ fontSize: 13, margin: "8px 0 0" }}>
+              {t("dontClose")}
             </p>
-          )}
-          <p className="muted" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
-            {t("dontClose")}
-          </p>
+          </div>
         </div>
       </section>
 

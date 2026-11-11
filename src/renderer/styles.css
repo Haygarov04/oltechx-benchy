@@ -746,35 +746,6 @@ button.part:hover {
   animation: heat 1.8s ease-in-out infinite;
 }
 
-.gauge {
-  width: 100%;
-  max-width: 260px;
-  justify-self: center;
-}
-
-.gauge-value {
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 40px;
-  fill: var(--fg);
-}
-
-.gauge-unit {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  fill: var(--muted);
-  text-transform: uppercase;
-}
-
-.gauge-arc {
-  transition: stroke-dashoffset 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.gauge-needle {
-  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
 .meter {
   position: relative;
   display: block;
@@ -871,18 +842,77 @@ button.part:hover {
   white-space: nowrap;
 }
 
+.gauge {
+  width: 100%;
+  max-width: 250px;
+  justify-self: center;
+}
+
+.gauge-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 54px;
+  fill: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge-unit {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  fill: var(--muted);
+  text-transform: uppercase;
+}
+
 .scope {
   width: 100%;
-  height: 76px;
+  height: 104px;
   display: block;
 }
 
-.scope-line {
-  stroke-linejoin: round;
+.scope-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring 1.4s ease-out infinite;
 }
 
-.scope-dot {
-  animation: blink 1s ease-in-out infinite;
+.board-card {
+  padding: 16px 16px 8px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 60%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 65%),
+    var(--surface);
+}
+
+.board-stage {
+  height: 400px;
+  margin: 4px -8px 0;
+}
+
+.board-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+
+.bench-board {
+  height: 270px;
+  margin: 0 -8px;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.readout-chart {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 /* ── Results ────────────────────────────────────────────────────────────── */
@@ -1016,6 +1046,17 @@ button.part:hover {
 }
 
 /* ── Motion ─────────────────────────────────────────────────────────────── */
+
+@keyframes ring {
+  from {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
 
 @keyframes fade {
   from {
@@ -1177,8 +1218,15 @@ button.part:hover {
   .metric-card {
     grid-template-columns: 60px minmax(0, 1fr);
   }
-  .focus {
+  .focus,
+  .readout {
     grid-template-columns: 1fr;
+  }
+  .board-stage {
+    height: 300px;
+  }
+  .bench-board {
+    height: 220px;
   }
   .focus-model {
     height: 260px;

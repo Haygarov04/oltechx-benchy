@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Account, CheckResults, Hardware, Uploaded } from "../shared/types";
 import { AccountCard } from "./components/account-card";
 import { LogoMark } from "./components/logo-mark";
+import { BoardView } from "./components/board-view";
 import { Gallery } from "./components/gallery";
 import { LiveModel } from "./components/model-view";
 import { PartCard } from "./components/part-card";
@@ -205,6 +206,17 @@ function Check() {
                         {t("wholeOnlyHint")}
                       </p>
                     )}
+                    </div>
+                  </div>
+                )}
+                {hardware && (
+                  <div className="card board-card rise" style={{ animationDelay: "40ms" }}>
+                    <div className="row silk" style={{ justifyContent: "space-between" }}>
+                      <span>{t("boardTitle")}</span>
+                      <span>{t("boardHint")}</span>
+                    </div>
+                    <div className="board-stage">
+                      <BoardView parts={hardware.parts} onSelect={setFocus} label={t("boardTitle")} />
                     </div>
                   </div>
                 )}
