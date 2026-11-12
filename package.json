@@ -1,7 +1,7 @@
 {
   "name": "oltechx-check",
   "productName": "OLTechX Check",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Checks a PC or Mac before you sell it on OLTechX: detects the parts, stress-tests them and fills in the listing.",
   "author": "OLTechX <oltechx@gmail.com>",
   "license": "MIT",
@@ -13,6 +13,7 @@
     "build": "npm run build:main && npm run build:renderer",
     "start": "npm run build && electron .",
     "typecheck": "tsc --noEmit -p .",
+    "smoke": "node scripts/smoke.mjs",
     "dist:win": "npm run build && electron-builder --win nsis --publish never",
     "release:win": "npm run build && electron-builder --win nsis --publish always",
     "dist:mac": "npm run build && electron-builder --mac --publish never"
@@ -39,6 +40,7 @@
     "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2",
     "lucide-react": "^1.71.0",
+    "playwright-core": "^1.56.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.187.0",

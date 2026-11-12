@@ -159,6 +159,8 @@ function Check() {
         },
       );
       void window.olx.live("done", 100);
+      // For the smoke test (scripts/smoke.mjs): the finished results.
+      (window as unknown as { __olxLastResults?: CheckResults }).__olxLastResults = results;
       setStage({ kind: "done", results, uploaded: null, error: null, uploading: false });
       window.scrollTo(0, 0);
       if (account?.connected) await send(results);
