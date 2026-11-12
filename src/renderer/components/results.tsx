@@ -1,7 +1,7 @@
 import type { CheckResults, DetectedPart, Hardware, PartSlot } from "../../shared/types";
 import { show, stability } from "../format";
 import { useLang } from "../i18n";
-import { partSlug, Render } from "./render";
+import { PartImage } from "./part-image";
 import { Scope } from "./scope";
 
 type Row = { label: string; value: string; bad?: boolean; good?: boolean };
@@ -10,7 +10,7 @@ function MetricCard({ part, title, rows, note, delay, chart }: { part: DetectedP
   return (
     <div className="card metric-card rise render-host" style={{ animationDelay: `${delay}ms` }}>
       <div className="part-figure">
-        <Render slug={partSlug(part)} label={part.name} />
+        <PartImage part={part} />
       </div>
       <div style={{ minWidth: 0 }}>
         <div className="silk">{title}</div>

@@ -2,20 +2,20 @@ import { CheckIcon, FingerprintIcon, HeartPulseIcon } from "lucide-react";
 import type { DetectedPart } from "../../shared/types";
 import { partSummary, serialTail, slotLabel } from "../format";
 import { useLang } from "../i18n";
-import { partSlug, Render } from "./render";
+import { PartImage } from "./part-image";
 
 /** One detected part with its drawing. With onToggle it becomes an "I'm selling this" checkbox. */
-export function PartCard({ part, index, on, onToggle, onOpen }: { part: DetectedPart; index: number; on?: boolean; onToggle?: () => void; onOpen?: () => void }) {
+export function PartCard({ part, index, on, onToggle, onOpen, title, extra }: { part: DetectedPart; index: number; on?: boolean; onToggle?: () => void; onOpen?: () => void; title?: string; extra?: string }) {
   const { t, health } = useLang();
-  const summary = partSummary(part, t);
+  const summary = [partSummary(part, t), extra].filter(Boolean).join(" · ");
   const tail = serialTail(part.serial);
   const body = (
     <>
       <span className="part-figure">
-        <Render slug={partSlug(part)} label={part.name} />
+        <PartImage part={part} />
       </span>
       <span style={{ minWidth: 0, flex: 1 }}>
-        <span className="silk">{slotLabel(part.slot, t)}</span>
+        <span className="silk">{title ?? slotLabel(part.slot, t)}</span>
         <span className="part-name" style={{ display: "block" }}>
           {part.name}
         </span>

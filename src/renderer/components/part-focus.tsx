@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import type { DetectedPart } from "../../shared/types";
 import { partSummary, serialTail, slotLabel } from "../format";
 import { useLang } from "../i18n";
-import { partSlug, Render } from "./render";
+import { PartImage } from "./part-image";
 
 /** A part opened large: a model to turn by hand and everything known about it. */
 export function PartFocus({ part, onClose }: { part: DetectedPart; onClose: () => void }) {
@@ -22,7 +22,7 @@ export function PartFocus({ part, onClose }: { part: DetectedPart; onClose: () =
           <XIcon aria-hidden="true" />
         </button>
         <div className="focus-model">
-          <Render slug={partSlug(part)} label={part.name} live />
+          <PartImage part={part} live />
         </div>
         <div className="focus-text">
           <div className="silk">{slotLabel(part.slot, t)}</div>

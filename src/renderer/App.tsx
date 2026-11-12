@@ -154,7 +154,9 @@ function Check() {
     }
   }
 
-  const sellable = hardware?.parts.map((p, i) => ({ p, i })).filter(({ p }) => SELLABLE.includes(p.slot)) ?? [];
+  const apple = hardware?.parts.some((p) => p.slot === "cpu" && /^apple\s+m\d/i.test(p.name)) ?? false;
+  // On Apple silicon the graphics and memory cannot be sold apart from the chip.
+  const sellable = hardware?.parts.map((p, i) => ({ p, i })).filter(({ p }) => SELLABLE.includes(p.slot) && !(apple && (p.slot === "gpu" || p.slot === "ram"))) ?? [];
   const mac = hardware?.device.platform?.startsWith("macOS") ?? false;
   const serials = Boolean(hardware?.serial || hardware?.parts.some((p) => p.serial));
 
@@ -246,9 +248,22 @@ function Check() {
                 )}
                 {hardware && (
                   <div className="parts">
-                    {hardware.parts.map((part, i) => (
-                      <PartCard key={`${part.slot}-${i}`} part={part} index={i} onOpen={() => setFocus(i)} />
-                    ))}
+                    {hardware.parts.map((part, i) => {
+                      // Apple silicon: processor, graphics and memory are one chip and one card.
+                      if (apple && (part.slot === "gpu" || part.slot === "ram")) return null;
+                      const ram = hardware.parts.find((p) => p.slot === "ram");
+                      const chip = apple && part.slot === "cpu";
+                      return (
+                        <PartCard
+                          key={`${part.slot}-${i}`}
+                          part={part}
+                          index={i}
+                          onOpen={() => setFocus(i)}
+                          title={chip ? t("chip") : undefined}
+                          extra={chip && ram?.specs.capacityGb ? t("unifiedMemory", { n: Number(ram.specs.capacityGb) }) : undefined}
+                        />
+                      );
+                    })}
                   </div>
                 )}
                 {hardware?.parts.some((p) => p.serial) && (

@@ -35,7 +35,26 @@ type Layout = { width: number; depth: number; hub: [number, number]; hubScale: n
 const DESK = { width: 27, depth: 25.92 };
 const px = (x: number, y: number): [number, number] => [(x / 1000 - 0.5) * DESK.width, (y / 960 - 0.5) * DESK.depth];
 
-const LAYOUTS: Record<BoardKind, Layout> = {
+/** Apple silicon: processor, graphics and memory are one chip, so they sit on the board as one part. */
+export const isAppleSilicon = (parts: DetectedPart[]) => parts.some((p) => p.slot === "cpu" && /^apple\s+m\d/i.test(p.name));
+
+const LAYOUTS: Record<BoardKind | "mac", Layout> = {
+  mac: {
+    width: 27,
+    depth: 18.5,
+    hub: [11.2, 4.4],
+    hubScale: 0.8,
+    photo: false,
+    slots: {
+      cpu: { at: [[-7.4, -4.4]], size: 8.2 },
+      storage: { at: [[6.4, -5.0], [6.4, -1.9]], size: 6.4 },
+      battery: { at: [[-2.0, 4.6]], size: 15 },
+      gpu: { at: [], size: 0 },
+      ram: { at: [], size: 0 },
+      phone: { at: [], size: 0 },
+      motherboard: { at: [], size: 0 },
+    },
+  },
   desktop: {
     ...DESK,
     hub: px(708, 834),
@@ -89,7 +108,9 @@ const LAYOUTS: Record<BoardKind, Layout> = {
  * A logic board drawn in detail: dense traces, vias, rows of tiny components, shielding cans,
  * white markings and a marked footprint under every part. Dark, like the board on the site.
  */
-function logicBoardTexture(kind: BoardKind, layout: Layout) {
+type Placed = { index: number; part: DetectedPart; place: [number, number]; slot: Place };
+
+function logicBoardTexture(kind: BoardKind, layout: Layout, placed: Placed[]) {
   const scale = 76;
   return canvasTexture(Math.round(layout.width * scale), Math.round(layout.depth * scale), (ctx, w, h) => {
     const X = (x: number) => (x / layout.width + 0.5) * w;
@@ -158,7 +179,7 @@ function logicBoardTexture(kind: BoardKind, layout: Layout) {
       ctx.fillText(`U${10 + i}`, x + 6, y - 5);
     }
     // The battery bay: a recess with its outline and connector.
-    for (const [bx, bz] of layout.slots.battery.at) {
+    for (const [bx, bz] of placed.filter((p) => p.part.slot === "battery").map((p) => p.place)) {
       const turned = Boolean(layout.slots.battery.turn);
       const bw = (turned ? 0.52 : 1.04) * layout.slots.battery.size * scale;
       const bh = (turned ? 1.04 : 0.5) * layout.slots.battery.size * scale;
@@ -172,28 +193,29 @@ function logicBoardTexture(kind: BoardKind, layout: Layout) {
       ctx.fillStyle = "rgba(230,235,245,0.6)";
       ctx.fillText("BATT", X(bx) - bw / 2 + 14, Z(bz) - bh / 2 + 22);
     }
-    // A footprint with pads under every part, so each one lands on its own place.
-    for (const slot of ["cpu", "gpu", "ram", "storage"] as const) {
-      for (const [sx, sz] of layout.slots[slot].at) {
-        const half = (layout.slots[slot].size * scale) / 2;
-        const fw = half * (slot === "storage" ? 1.05 : 1.08);
-        const fh = half * (slot === "storage" ? 0.36 : slot === "ram" ? 0.75 : 1.08);
-        ctx.fillStyle = "#0e141f";
-        ctx.strokeStyle = "rgba(230,235,245,0.7)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(X(sx) - fw, Z(sz) - fh, fw * 2, fh * 2, 6);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#c9a24a";
-        for (let k = 0; k < 22; k++) {
-          const t = -fw + 10 + ((fw * 2 - 20) / 21) * k;
-          ctx.fillRect(X(sx) + t - 2, Z(sz) - fh - 7, 4, 6);
-          ctx.fillRect(X(sx) + t - 2, Z(sz) + fh + 1, 4, 6);
-        }
-        ctx.fillStyle = "rgba(230,235,245,0.6)";
-        ctx.fillText(slot.toUpperCase(), X(sx) - fw, Z(sz) - fh - 12);
+    // A footprint with pads under every part that is really there, so each one lands on its own place.
+    for (const { part, place, slot } of placed) {
+      if (part.slot === "battery") continue;
+      const [sx, sz] = place;
+      const half = (slot.size * scale) / 2;
+      const apple = part.slot === "cpu" && /^apple/i.test(part.name);
+      const fw = half * (part.slot === "storage" ? 1.05 : 1.08);
+      const fh = half * (part.slot === "storage" ? 0.36 : part.slot === "ram" ? 0.75 : apple ? 0.88 : 1.08);
+      ctx.fillStyle = "#0e141f";
+      ctx.strokeStyle = "rgba(230,235,245,0.7)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(X(sx) - fw, Z(sz) - fh, fw * 2, fh * 2, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#c9a24a";
+      for (let k = 0; k < 22; k++) {
+        const t = -fw + 10 + ((fw * 2 - 20) / 21) * k;
+        ctx.fillRect(X(sx) + t - 2, Z(sz) - fh - 7, 4, 6);
+        ctx.fillRect(X(sx) + t - 2, Z(sz) + fh + 1, 4, 6);
       }
+      ctx.fillStyle = "rgba(230,235,245,0.6)";
+      ctx.fillText(apple ? "SOC" : part.slot.toUpperCase(), X(sx) - fw, Z(sz) - fh - 12);
     }
     // Gold mounting holes and the maker's name.
     for (const [hx, hz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
@@ -249,6 +271,32 @@ export class BoardScene {
   private look = new Vector2();
   private kind: BoardKind;
   private L: Layout;
+  private apple = false;
+
+  /** The part under test glows. On Apple silicon the graphics and memory tests light the chip. */
+  private isActive(body: Body) {
+    const active = this.state.active;
+    return active === body.slot || (this.apple && body.slot === "cpu" && (active === "gpu" || active === "ram"));
+  }
+
+  /** Which part goes where on this board. On Apple silicon the graphics and memory live in the chip. */
+  private placements(parts: DetectedPart[]): Placed[] {
+    const used = new Map<PartSlot, number>();
+    const placed: Placed[] = [];
+    parts.forEach((part, index) => {
+      if (this.apple && (part.slot === "gpu" || part.slot === "ram")) return;
+      const slot = this.L.slots[part.slot];
+      const n = used.get(part.slot) ?? 0;
+      const place = slot.at[n];
+      if (!place) return;
+      used.set(part.slot, n + 1);
+      // The chip carries the size of its memory, printed on the memory packages.
+      const ram = parts.find((p) => p.slot === "ram");
+      const shown = this.apple && part.slot === "cpu" && ram ? { ...part, specs: { ...part.specs, unifiedGb: ram.specs.capacityGb ?? null } } : part;
+      placed.push({ index, part: shown, place, slot });
+    });
+    return placed;
+  }
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -257,7 +305,8 @@ export class BoardScene {
     kind: BoardKind = "laptop",
   ) {
     this.kind = kind;
-    this.L = LAYOUTS[kind];
+    this.apple = kind !== "desktop" && isAppleSilicon(parts);
+    this.L = this.apple ? LAYOUTS.mac : LAYOUTS[kind];
     this.renderer = makeRenderer(canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.parts = studio(this.renderer);
@@ -283,7 +332,8 @@ export class BoardScene {
     body.castShadow = true;
     scene.add(body);
     // The face of the board: the rendered motherboard for a desktop, a drawn logic board otherwise.
-    const map = L.photo ? new TextureLoader().load(boardPhoto, () => (this.drawnPaused = false)) : logicBoardTexture(this.kind, L);
+    const placed = this.placements(parts);
+    const map = L.photo ? new TextureLoader().load(boardPhoto, () => (this.drawnPaused = false)) : logicBoardTexture(this.kind, L, placed);
     map.colorSpace = SRGBColorSpace;
     map.anisotropy = 8;
     const face = new Mesh(new PlaneGeometry(L.width, L.depth), new MeshPhysicalMaterial({ map, roughness: 0.5, metalness: 0.15, clearcoat: 0.45, clearcoatRoughness: 0.4 }));
@@ -309,13 +359,7 @@ export class BoardScene {
     hubGlow.position.set(L.hub[0], TOP + 1.4, L.hub[1]);
     scene.add(hubGlow);
 
-    const used = new Map<PartSlot, number>();
-    parts.forEach((part, index) => {
-      const slot = this.L.slots[part.slot];
-      const n = used.get(part.slot) ?? 0;
-      const place = slot.at[n];
-      if (!place) return;
-      used.set(part.slot, n + 1);
+    for (const { index, part, place, slot } of placed) {
       const model = partModel(part);
       if (slot.turn) {
         // Some parts lie the other way on this board, like memory in its slots.
@@ -352,7 +396,7 @@ export class BoardScene {
         trace: this.trace(home),
       };
       this.bodies.push(body);
-    });
+    }
 
     key.intensity = 1.7;
     key.position.set(10, 26, 14);
@@ -447,7 +491,7 @@ export class BoardScene {
 
   private pulse(body: Body, time: number, dt: number) {
     const { trace } = body;
-    const active = this.state.active === body.slot;
+    const active = this.isActive(body);
     trace.flash = Math.max(0, trace.flash - dt * 2.2);
     trace.material.emissiveIntensity = 0.45 + (active ? 0.9 + 0.3 * Math.sin(time * 6) : 0) + trace.flash * 1.6;
     trace.material.emissive.set(active && this.state.heat > 0.6 ? "#ff8a3d" : "#3b7bff");
@@ -545,10 +589,11 @@ export class BoardScene {
 
   /** The camera looks down at the board from the front and backs off until all of it fits. */
   private place() {
-    const elevation = (50 * Math.PI) / 180;
-    const azimuth = (16 * Math.PI) / 180 + this.look.x * 0.05;
+    // Nearly straight from the front and above, so the board fills the frame; the pointer tilts it a little.
+    const elevation = (56 * Math.PI) / 180;
+    const azimuth = this.look.x * 0.06;
     const direction = new Vector3(Math.cos(elevation) * Math.sin(azimuth), Math.sin(elevation) + this.look.y * 0.03, Math.cos(elevation) * Math.cos(azimuth)).normalize();
-    const center = new Vector3(0, 1.2, 0.4);
+    const center = new Vector3(0, 0.6, 0.2);
     const corners = [-1, 1].flatMap((x) => [-1, 1].flatMap((z) => [0, 4].map((y) => new Vector3((x * this.L.width) / 2, y, (z * this.L.depth) / 2))));
     let distance = 60;
     for (let pass = 0; pass < 4; pass++) {
@@ -561,7 +606,7 @@ export class BoardScene {
         const projected = corner.clone().project(this.camera);
         extent = Math.max(extent, Math.abs(projected.x), Math.abs(projected.y));
       }
-      distance *= extent / 0.93;
+      distance *= extent / 0.97;
     }
     this.camera.position.copy(center).addScaledVector(direction, distance);
     this.camera.lookAt(center);
@@ -582,7 +627,7 @@ export class BoardScene {
       this.step(body, time, delta / 2);
       this.step(body, time, delta / 2);
       this.pulse(body, time, delta);
-      body.model.animate?.(time, delta, { active: this.state.active === body.slot, heat: this.state.heat });
+      body.model.animate?.(time, delta, { active: this.isActive(body), heat: this.state.heat });
     }
     this.place();
     this.renderer.render(this.parts.scene, this.camera);

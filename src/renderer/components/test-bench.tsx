@@ -61,7 +61,8 @@ export function TestBench({ progress, startedAt, hardware }: { progress: Progres
   if (peak.current.key !== key) peak.current = { key, max: 1 };
   if (progress.live && progress.live * 1.25 > peak.current.max) peak.current.max = progress.live * 1.25;
   const fraction = progress.live ? progress.live / peak.current.max : 0;
-  const reading = progress.live && progress.unit ? measure(progress.live, progress.unit, lang) : { value: "…", unit: t("running") };
+  // Before the first number of a stage: the graphics card warms up, the others are starting.
+  const reading = progress.live && progress.unit ? measure(progress.live, progress.unit, lang) : { value: "…", unit: progress.stage === "gpu" ? t("warming") : t("running") };
 
   const current = STAGES.indexOf(progress.stage);
   const elapsed = (now - startedAt) / 1000;

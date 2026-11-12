@@ -140,7 +140,7 @@ export function cpuBrand(name: string): { brand: string; model: string } {
   return { brand: name.split(/\s+/)[0]?.toUpperCase() ?? "", model: "" };
 }
 
-function appleChip(model: string): Model {
+function appleChip(model: string, memoryGb = 0): Model {
   const group = new Group();
   group.add(at(box(4.6, 0.14, 3.8, pcb("#2b5a40"), 0.08), 0, 0.07, 0));
   const pads = gold();
@@ -152,7 +152,11 @@ function appleChip(model: string): Model {
   const tiny: [number, number, number][] = [];
   for (let i = 0; i < 9; i++) tiny.push([0.62, 0.17, -1.4 + i * 0.35], [-2.1, 0.17, -1.4 + i * 0.35]);
   group.add(instanced(new BoxGeometry(0.1, 0.06, 0.18), metal("#b98d45", 0.35), tiny));
-  for (const z of [-0.78, 0.78]) group.add(at(box(1.15, 0.1, 1.4, plastic("#16181c", 0.35), 0.04), 1.35, 0.19, z));
+  for (const z of [-0.78, 0.78]) {
+    group.add(at(box(1.15, 0.1, 1.4, plastic("#16181c", 0.35), 0.04), 1.35, 0.19, z));
+    // Unified memory: half of it in each package.
+    if (memoryGb > 0) group.add(at(topLabel(labelTexture([{ text: `${memoryGb / 2} GB`, size: 120, weight: 700, color: "rgba(170,176,186,0.9)", font: MONO }], 512, 256), 1.0, 0.5), 1.35, 0.242, z));
+  }
   const label = topLabel(labelTexture([{ text: model || "M", size: 120, weight: 800, color: "rgba(205,210,218,0.92)" }], 512, 512), 2.0, 2.0, { metalness: 0.4, roughness: 0.3 });
   group.add(at(label, -0.75, 0.262, 0));
   return {
@@ -166,7 +170,7 @@ function appleChip(model: string): Model {
 
 function processor(part: DetectedPart): Model {
   const { brand, model } = cpuBrand(part.name);
-  if (brand === "APPLE") return appleChip(model);
+  if (brand === "APPLE") return appleChip(model, Number(part.specs.unifiedGb) || 0);
   const group = new Group();
   group.add(at(box(4, 0.16, 4, pcb("#1f6d40"), 0.06), 0, 0.08, 0));
   const caps = metal("#b98d45", 0.35);
