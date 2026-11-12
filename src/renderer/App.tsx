@@ -26,7 +26,7 @@ import { STAGE_META, TestBench } from "./components/test-bench";
 import { type Progress, runCheck, STAGES } from "./engine";
 import { SELLABLE } from "./format";
 import { errorKey, type Lang, LangProvider, useLang } from "./i18n";
-import { ThemeSwitch } from "./theme";
+import { savedTheme, setThemeChoice, ThemeSwitch } from "./theme";
 
 type Stage =
   | { kind: "home" }
@@ -75,6 +75,16 @@ export function App() {
   );
 }
 
+/**
+ * The theme saved in the account wins: chosen on the site or on another device, it applies here too.
+ * An account without a choice yet gets the one made in this app.
+ */
+function syncTheme(account: Account) {
+  if (!account.connected) return;
+  if (account.theme) setThemeChoice(account.theme, true);
+  else if (savedTheme() !== "system") void window.olx.saveTheme?.(savedTheme());
+}
+
 function Check() {
   const { t } = useLang();
   const [hardware, setHardware] = useState<Hardware | null>(null);
@@ -89,7 +99,10 @@ function Check() {
 
   useEffect(() => {
     window.olx.scan().then(setHardware, () => setScanError("scanFailed"));
-    window.olx.account().then(setAccount, () => setAccount({ connected: false }));
+    window.olx.account().then((found) => {
+      setAccount(found);
+      syncTheme(found);
+    }, () => setAccount({ connected: false }));
   }, []);
 
   const send = useCallback(
@@ -107,6 +120,8 @@ function Check() {
   const onAccount = useCallback(
     (next: Account) => {
       setAccount(next);
+      // Just connected: take the theme from the account, or give it the one chosen here.
+      if (next.connected) void window.olx.account().then(syncTheme, () => undefined);
       // Connected after the test: upload the result right away.
       if (next.connected && stage.kind === "done" && !stage.uploaded && !stage.uploading) void send(stage.results);
     },

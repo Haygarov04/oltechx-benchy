@@ -62,6 +62,7 @@ ipcMain.handle("cancel-connect", () => account.cancelPairing());
 ipcMain.handle("logout", () => account.logout());
 ipcMain.handle("upload", (_event, payload) => account.upload(payload));
 ipcMain.handle("live", (_event, stage: string, progress: number) => account.live(String(stage), Number(progress)));
+ipcMain.handle("save-theme", (_event, theme: string) => (theme === "system" || theme === "light" || theme === "dark" ? account.saveTheme(theme) : undefined));
 ipcMain.handle("open", (_event, url: string) => openSite(String(url)));
 ipcMain.handle("keep-awake", (_event, on: boolean) => {
   if (on && awake === null) awake = powerSaveBlocker.start("prevent-display-sleep");

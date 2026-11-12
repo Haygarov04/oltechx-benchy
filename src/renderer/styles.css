@@ -178,6 +178,89 @@ button {
   height: 15px;
 }
 
+.theme-menu {
+  position: relative;
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  box-shadow: var(--inset);
+}
+
+.icon-button:hover {
+  background: var(--surface-2);
+}
+
+.icon-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  width: 230px;
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.18s ease both;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: var(--surface-2);
+}
+
+.menu-item[aria-checked="true"] {
+  font-weight: 700;
+}
+
+.menu-item svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.menu-item span {
+  flex: 1;
+}
+
+.menu-item .menu-check {
+  color: var(--primary);
+}
+
+.menu-note {
+  margin: 4px 10px 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* ── Layout and type ────────────────────────────────────────────────────── */
 
 .main {

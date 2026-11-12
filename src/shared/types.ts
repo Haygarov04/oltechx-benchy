@@ -87,7 +87,10 @@ export type Hardware = {
 
 export type UploadPayload = { device: DeviceInfo; parts: DetectedPart[]; results: CheckResults; serial: string | null; deviceId?: string | null };
 
-export type Account = { connected: false } | { connected: true; userName: string; remember: boolean };
+export type Theme = "system" | "light" | "dark";
+
+/** `theme` is the choice saved in the OLTechX account, the same on the site and on every device. */
+export type Account = { connected: false } | { connected: true; userName: string; remember: boolean; theme?: Theme | null };
 
 export type Uploaded = { id: string; code: string; url: string; sellUrl: string };
 
@@ -105,6 +108,8 @@ export type Bridge = {
   diskTest: () => Promise<DiskResults>;
   /** Current temperatures in °C, null where the system does not report them. */
   temps: () => Promise<{ cpu: number | null; gpu: number | null; battery?: number | null }>;
+  /** Saves the theme in the account (when connected), so it is the same everywhere. */
+  saveTheme?: (theme: Theme) => Promise<void>;
   /** Reports the stage and the percent done to the site, for the live view on another device. */
   live: (stage: string, progress: number) => Promise<void>;
   /** Android only: scan the QR code shown on the site. */

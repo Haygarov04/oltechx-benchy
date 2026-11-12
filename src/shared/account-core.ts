@@ -1,4 +1,4 @@
-import type { Account, Uploaded, UploadPayload } from "./types";
+import type { Account, Theme, Uploaded, UploadPayload } from "./types";
 
 /**
  * The link to the OLTechX site, shared by the desktop app (main process) and the Android app (WebView).
@@ -72,7 +72,8 @@ export function createAccount(options: { site: string; platform: "windows" | "ma
           await forget();
           return { connected: false };
         }
-        return { connected: true, userName: String(data.userName ?? ""), remember: remembered };
+        const theme = data.theme === "light" || data.theme === "dark" || data.theme === "system" ? (data.theme as Theme) : null;
+        return { connected: true, userName: String(data.userName ?? ""), remember: remembered, theme };
       } catch {
         return { connected: true, userName: "", remember: remembered };
       }
@@ -134,6 +135,13 @@ export function createAccount(options: { site: string; platform: "windows" | "ma
     cancelPairing() {
       polling?.abort();
       polling = null;
+    },
+
+    /** The theme chosen in the app goes to the account, so the site and other devices use it too. */
+    async saveTheme(theme: Theme): Promise<void> {
+      await load();
+      if (!token) return;
+      await call("/api/device/me", { method: "PATCH", body: { theme }, auth: true }).catch(() => undefined);
     },
 
     /** Tells the site how far the check is, so the page open on another device can follow it live. */

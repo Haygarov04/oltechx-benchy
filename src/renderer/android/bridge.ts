@@ -56,6 +56,7 @@ export function installAndroidBridge() {
     },
     upload: (payload) => account.upload(payload),
     live: (stage, progress) => account.live(stage, progress),
+    saveTheme: (theme) => account.saveTheme(theme),
     open: async (url) => open(url),
     keepAwake: (on) => Native.keepAwake({ on }),
     siteUrl: async () => SITE,

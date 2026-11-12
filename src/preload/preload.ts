@@ -17,6 +17,7 @@ const bridge: Bridge = {
   },
   upload: (payload) => ipcRenderer.invoke("upload", payload),
   live: (stage, progress) => ipcRenderer.invoke("live", stage, progress),
+  saveTheme: (theme) => ipcRenderer.invoke("save-theme", theme),
   open: (url) => ipcRenderer.invoke("open", url),
   keepAwake: (on) => ipcRenderer.invoke("keep-awake", on),
   siteUrl: () => ipcRenderer.invoke("site-url"),
