@@ -203,6 +203,16 @@ export async function scanHardware(): Promise<Hardware> {
       serial: cleanSerial(disk.serialNum),
     });
   }
+  // Some machines (virtual ones, some Macs) list no physical drive. The drive the system runs from
+  // is still there, so it is shown by its size, without a model or serial.
+  if (!parts.some((p) => p.slot === "storage")) {
+    const volumes = await si.fsSize().catch(() => []);
+    const system = volumes.find((v) => v.mount === "/" || /^c:?\\?$/i.test(v.mount)) ?? volumes.sort((a, b) => b.size - a.size)[0];
+    if (system && system.size > 16 * GB) {
+      const capacityGb = Math.round(system.size / 1e9);
+      parts.push({ slot: "storage", name: `SSD ${capacityGb} GB`, specs: { kind: "SSD", capacityGb } });
+    }
+  }
 
   // Laptop battery: how much of the original capacity is left.
   if (battery?.hasBattery && battery.designedCapacity > 0) {
