@@ -10,7 +10,7 @@ on:
   push:
     tags: ["v*"]
     # A push to android-preview builds only the Android app, to check it before a release.
-    branches: ["android-preview"]
+    branches: ["android-preview", "smoke-preview"]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,8 @@ permissions:
 
 jobs:
   windows:
-    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    # smoke-preview runs the Windows and macOS smoke tests without making a release.
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || github.ref_name == 'smoke-preview'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +47,7 @@ jobs:
             release/latest.yml
 
   mac:
-    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || github.ref_name == 'smoke-preview'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

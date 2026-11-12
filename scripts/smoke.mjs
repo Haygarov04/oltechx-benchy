@@ -8,10 +8,20 @@ import electronPath from "electron";
 import { _electron as electron } from "playwright-core";
 
 const failures = [];
+// On GitHub a failure is also written as an annotation, which anyone can read without the log.
+const annotate = (message) => process.env.GITHUB_ACTIONS && console.log(`::error title=Smoke test (${process.platform})::${message.replace(/\r?\n/g, " ")}`);
 const check = (ok, message) => {
-  if (!ok) failures.push(message);
+  if (!ok) {
+    failures.push(message);
+    annotate(message);
+  }
   console.log(`${ok ? "ok  " : "FAIL"} ${message}`);
 };
+process.on("unhandledRejection", (error) => {
+  annotate(`crashed: ${error?.message ?? error}`);
+  console.error(error);
+  process.exit(1);
+});
 
 const app = await electron.launch({
   executablePath: electronPath,
@@ -23,6 +33,8 @@ try {
   const win = await app.firstWindow();
   const errors = [];
   win.on("pageerror", (error) => errors.push(String(error)));
+  win.on("console", (message) => message.type() === "error" && errors.push(message.text()));
+  app.process().stderr?.on("data", (data) => process.stderr.write(data));
   await win.waitForSelector(".part", { timeout: 120_000 });
 
   const hardware = await win.evaluate(() => window.olx.scan());
@@ -32,7 +44,20 @@ try {
 
   const started = Date.now();
   await win.locator(".btn-xl").click();
-  await win.waitForSelector(".verdict", { timeout: 480_000 });
+  // While it runs, report the stage now and then, so a hang shows where it stopped.
+  let stage = "";
+  const watch = setInterval(async () => {
+    const now = await win.locator(".stage[data-state=active] .stage-name").first().textContent().catch(() => null);
+    if (now && now !== stage) console.log(`  stage: ${(stage = now)}`);
+  }, 2000);
+  try {
+    await win.waitForSelector(".verdict", { timeout: 480_000 });
+  } catch (error) {
+    await win.screenshot({ path: "smoke.png", fullPage: true }).catch(() => undefined);
+    throw new Error(`the check did not finish (last stage: ${stage || "none"}; interface errors: ${errors.join(" | ") || "none"})`);
+  } finally {
+    clearInterval(watch);
+  }
   const results = await win.evaluate(() => window.__olxLastResults);
   console.log(`check finished in ${Math.round((Date.now() - started) / 1000)} s`);
   console.log(JSON.stringify({ cpu: { single: results.cpu.single, multi: results.cpu.multi, float: results.cpu.float?.multi, hash: results.cpu.hash }, ram: results.ram, gpu: { tested: results.gpu.tested, reason: results.gpu.reason, api: results.gpu.api, ops: results.gpu.opsPerSec, flops: results.gpu.flops }, vram: results.vram, disk: results.disk }, null, 1));
