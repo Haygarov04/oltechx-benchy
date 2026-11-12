@@ -2,11 +2,12 @@ import type { CSSProperties } from "react";
 import type { DetectedPart, Hardware } from "../../shared/types";
 
 /**
- * The ray-traced renders from oltechx.com: a still frame of each part and a strip of 20 frames
- * that turns it around. They are finished pictures, so the app computes nothing while it tests.
+ * The ray-traced renders from oltechx.com, made again at a higher resolution and quality for the app
+ * (scripts/pc-render/icons.mjs with ICON_LARGE=1024 ICON_SMALL=512): a 1024 px still frame of each part
+ * and a strip of 20 frames of 512 px that turns it around. They are finished pictures, so the app computes nothing while it tests.
  */
 
-const stills = import.meta.glob<string>("../assets/renders/*-448.webp", { eager: true, query: "?url", import: "default" });
+const stills = import.meta.glob<string>("../assets/renders/*-1024.webp", { eager: true, query: "?url", import: "default" });
 const spins = import.meta.glob<string>("../assets/renders/*-spin.webp", { eager: true, query: "?url", import: "default" });
 const file = (set: Record<string, string>, slug: string, kind: string) => set[`../assets/renders/${slug}-${kind}.webp`];
 
@@ -45,7 +46,7 @@ export function deviceSlug(hardware: Hardware): string {
 export function Render({ slug, live = false, label }: { slug: string; live?: boolean; label: string }) {
   return (
     <span className="render" data-live={live || undefined} style={{ "--spin": `url("${file(spins, slug, "spin")}")` } as CSSProperties}>
-      <img className="render-still" src={file(stills, slug, "448")} alt={label} draggable={false} />
+      <img className="render-still" src={file(stills, slug, "1024")} alt={label} draggable={false} />
       <span className="render-spin" aria-hidden="true" />
     </span>
   );
