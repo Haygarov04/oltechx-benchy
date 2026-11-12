@@ -134,6 +134,8 @@ jobs:
         with:
           path: files
           merge-multiple: true
+      # The smoke test screenshots are for checking a build, not for downloading.
+      - run: rm -f files/smoke.png
       - uses: softprops/action-gh-release@v2
         with:
           files: files/*
