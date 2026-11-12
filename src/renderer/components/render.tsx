@@ -37,7 +37,8 @@ export function deviceSlug(hardware: Hardware): string {
   if (hardware.device.kind === "tablet") return "tableti";
   if (/imac/i.test(name)) return "aio-kompyutri";
   if (/mac mini|mac studio/i.test(name)) return "mini-kompyutri";
-  if (hardware.laptop || /macbook/i.test(name)) return "laptopi";
+  if (/macbook/i.test(name)) return "macbook";
+  if (hardware.laptop) return "laptopi";
   if (/mac/i.test(name)) return "mini-kompyutri";
   return "nastolni-kompyutri";
 }
