@@ -91,6 +91,12 @@ async function run() {
       clearInterval(watch);
     }
     const results = await win.evaluate(() => window.__olxLastResults);
+    // The finished check is kept on the device and listed again after the app restarts.
+    const saved = await win.evaluate(() => JSON.parse(localStorage.getItem("olx.history") ?? "[]").length);
+    check(saved === 1, "the finished check is kept on the device");
+    await win.reload();
+    const listed = await win.waitForSelector(".history li", { timeout: 120_000 }).then(() => true, () => false);
+    check(listed, "the kept check is listed on the home screen after a restart");
     console.log(
       `check finished in ${Math.round((Date.now() - started) / 1000)} s`,
     );

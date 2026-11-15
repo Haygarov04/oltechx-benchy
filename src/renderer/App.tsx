@@ -12,6 +12,7 @@ import {
   ShieldAlertIcon,
   ShieldCheckIcon,
   TimerIcon,
+  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Account, CheckResults, Hardware, Uploaded } from "../shared/types";
@@ -25,13 +26,14 @@ import { Results } from "./components/results";
 import { STAGE_META, TestBench } from "./components/test-bench";
 import { type Progress, runCheck, STAGES } from "./engine";
 import { SELLABLE } from "./format";
+import { addCheck, loadHistory, markUploaded, removeCheck, type SavedCheck } from "./history";
 import { errorKey, type Lang, LangProvider, useLang } from "./i18n";
 import { savedTheme, setThemeChoice, ThemeSwitch } from "./theme";
 
 type Stage =
   | { kind: "home" }
   | { kind: "test"; progress: Progress; startedAt: number }
-  | { kind: "done"; results: CheckResults; uploaded: (Uploaded & { passed?: boolean; problems?: string[] }) | null; error: string | null; uploading: boolean };
+  | { kind: "done"; results: CheckResults; uploaded: (Uploaded & { passed?: boolean; problems?: string[] }) | null; error: string | null; uploading: boolean; historyId: string };
 
 const phone = (hardware: Hardware) => hardware.device.kind === "phone";
 
@@ -86,7 +88,8 @@ function syncTheme(account: Account) {
 }
 
 function Check() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const [history, setHistory] = useState<SavedCheck[]>(() => loadHistory());
   const [hardware, setHardware] = useState<Hardware | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [stage, setStage] = useState<Stage>({ kind: "home" });
@@ -106,10 +109,12 @@ function Check() {
   }, []);
 
   const send = useCallback(
-    async (results: CheckResults) => {
+    async (results: CheckResults, historyId: string) => {
       if (!hardware) return;
       setStage((s) => (s.kind === "done" ? { ...s, uploading: true, error: null } : s));
       const uploaded = await window.olx.upload({ device: hardware.device, parts: hardware.parts, results, serial: hardware.serial, deviceId: hardware.deviceId ?? null });
+      // Remember that this check is on the site, so reopening it later shows the code and the listing buttons.
+      if (!("error" in uploaded)) setHistory(markUploaded(historyId, uploaded));
       setStage((s) =>
         s.kind === "done" ? { ...s, uploading: false, uploaded: "error" in uploaded ? null : uploaded, error: "error" in uploaded ? uploaded.error : null } : s,
       );
@@ -123,7 +128,7 @@ function Check() {
       // Just connected: take the theme from the account, or give it the one chosen here.
       if (next.connected) void window.olx.account().then(syncTheme, () => undefined);
       // Connected after the test: upload the result right away.
-      if (next.connected && stage.kind === "done" && !stage.uploaded && !stage.uploading) void send(stage.results);
+      if (next.connected && stage.kind === "done" && !stage.uploaded && !stage.uploading) void send(stage.results, stage.historyId);
     },
     [stage, send],
   );
@@ -161,9 +166,12 @@ function Check() {
       void window.olx.live("done", 100);
       // For the smoke test (scripts/smoke.mjs): the finished results.
       (window as unknown as { __olxLastResults?: CheckResults }).__olxLastResults = results;
-      setStage({ kind: "done", results, uploaded: null, error: null, uploading: false });
+      // Saved right away: closing the app now no longer loses the result.
+      const historyId = crypto.randomUUID();
+      setHistory(addCheck({ id: historyId, at: Date.now(), device: hardware.computerName ?? null, results, uploaded: null }));
+      setStage({ kind: "done", results, uploaded: null, error: null, uploading: false, historyId });
       window.scrollTo(0, 0);
-      if (account?.connected) await send(results);
+      if (account?.connected) await send(results, historyId);
     } catch {
       if (!controller.signal.aborted) setStage({ kind: "home" });
     } finally {
@@ -322,6 +330,42 @@ function Check() {
                   </button>
                 </div>
                 <AccountCard account={account} onChange={onAccount} />
+                {history.length > 0 && (
+                  <div className="card rise" style={{ animationDelay: "80ms" }}>
+                    <div className="display h2">{t("historyTitle")}</div>
+                    <p className="muted" style={{ fontSize: 13.5, margin: "4px 0 10px" }}>
+                      {t("historyHint")}
+                    </p>
+                    <ul className="history">
+                      {history.map((check) => (
+                        <li key={check.id}>
+                          <button
+                            type="button"
+                            className="history-open"
+                            onClick={() => {
+                              setStage({ kind: "done", results: check.results, uploaded: check.uploaded, error: null, uploading: false, historyId: check.id });
+                              window.scrollTo(0, 0);
+                            }}
+                          >
+                            <span className={`history-dot ${check.uploaded ? (check.uploaded.passed === false ? "bad" : "ok") : "wait"}`} aria-hidden="true" />
+                            <span className="history-text">
+                              <strong>{check.uploaded ? (check.uploaded.passed === false ? t("historyFailed") : t("historyPassed")) : t("historyNotUploaded")}</strong>
+                              {check.device ? ` · ${check.device}` : ""}
+                              <span className="muted history-date">
+                                {new Date(check.at).toLocaleString(lang === "bg" ? "bg-BG" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                {check.uploaded ? ` · ${check.uploaded.code}` : ""}
+                              </span>
+                            </span>
+                            <span className="history-go">{t("historyOpen")}</span>
+                          </button>
+                          <button type="button" className="history-remove" aria-label={t("historyRemove")} title={t("historyRemove")} onClick={() => setHistory(removeCheck(check.id))}>
+                            <XIcon aria-hidden="true" size={16} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -379,7 +423,7 @@ function Check() {
             {stage.error && (
               <div className="alert alert-error row" style={{ justifyContent: "space-between" }}>
                 <span>{t(errorKey(stage.error))}</span>
-                <button type="button" className="btn" onClick={() => void send(stage.results)}>
+                <button type="button" className="btn" onClick={() => void send(stage.results, stage.historyId)}>
                   {t("retry")}
                 </button>
               </div>
