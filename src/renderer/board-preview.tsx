@@ -4,9 +4,12 @@ import "@fontsource/sofia-sans/400.css";
 import "@fontsource/sofia-sans/700.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "./styles.css";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { DetectedPart } from "../shared/types";
 import { BoardView } from "./components/board-view";
+import { partModel } from "./three/models";
+import { picture } from "./three/stage";
 
 const DESKTOP: DetectedPart[] = [
   { slot: "cpu", name: "AMD Ryzen 7 5800X3D 8-Core Processor", specs: { cores: 8, threads: 16, socket: "AM4" } },
@@ -29,8 +32,34 @@ const OFFICE: DetectedPart[] = [
 
 const [kindHash, set] = location.hash.slice(1).split("-");
 const kind = (kindHash || "desktop") as "desktop" | "laptop" | "phone";
+/** #parts: every part model on its own, large, to look at the details. */
+function Parts() {
+  const parts = [...DESKTOP, ...OFFICE.filter((p) => p.slot === "storage" || p.slot === "ram")];
+  const [shots, setShots] = useState<string[]>([]);
+  useEffect(() => {
+    void (async () => {
+      const out: string[] = [];
+      for (const part of parts) out.push(await picture(`preview|${part.name}`, () => partModel(part), 520, 400));
+      setShots(out);
+    })();
+    // Rendered once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, padding: 8 }}>
+      {shots.map((src, i) => (
+        <img key={i} src={src} alt="" style={{ width: "100%", background: "#141a24", borderRadius: 8 }} />
+      ))}
+    </div>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
+  kindHash === "parts" ? (
+    <Parts />
+  ) : (
   <div style={{ width: "100vw", height: "100vh" }} className="board-preview">
     <BoardView parts={set === "office" ? OFFICE : DESKTOP} kind={kind} label="preview" />
-  </div>,
+  </div>
+  ),
 );

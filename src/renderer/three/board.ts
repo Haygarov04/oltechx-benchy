@@ -348,7 +348,9 @@ export class BoardScene {
         // Graphics in the processor has no card: it is already shown by the processor.
         if (gpuDone || !isDiscrete(part.name)) return;
         gpuDone = true;
-        placed.push({ index, part, place: [0, 0], slot: { at: [], size: cardLengthMm(part.name) * MM } });
+        // At its real size a card lying flat covers half the board, so it is drawn at 60%: still the longest
+        // part, longer for the top models, and it never hides the processor or the memory.
+        placed.push({ index, part, place: [0, 0], slot: { at: [], size: cardLengthMm(part.name) * MM * 0.6 } });
       } else if (part.slot === "storage") {
         if (isSataDrive(part)) {
           if (sata >= sataZ.length) return;
@@ -448,6 +450,9 @@ export class BoardScene {
         const mirror = new Group();
         mirror.add(model.group);
         mirror.scale.z = -1;
+        // The name on the edge is turned back, so it still reads the right way round.
+        const brand = mirror.getObjectByName("brand");
+        if (brand) brand.scale.x = -1;
         const card = new Group();
         card.add(mirror);
         model.group = card;

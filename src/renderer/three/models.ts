@@ -222,11 +222,19 @@ export function graphicsCard(part: DetectedPart): Model {
     // Graphics inside the processor: show the chip it lives in.
     return /apple/i.test(part.name) ? appleChip(cpuBrand(part.name).model) : processor({ ...part, name: part.name.replace(/graphics|uhd|iris|xe|radeon/gi, "").trim() || part.name });
   }
+  // Real proportions: the top models are long three-fan cards, the rest two fans. The board scales it to the real length.
+  const big = /\b(4090|4080|3090|3080|5090|5080|4070|3070|5070|2080|7900|7800|6800|6900|6950)\b/i.test(part.name);
+  const fanCount = big ? 3 : 2;
   const group = new Group();
-  const L = 10.5;
+  const L = big ? 10.5 : 9.0;
   const W = 4.3;
-  const H = 1.0;
-  group.add(at(box(L, 0.08, W, metal("#3b4048", 0.42), 0.04), 0, 0.12, 0));
+  const FIN = 0.95;
+  const base = 0.3;
+  const top = base + FIN;
+  // Backplate under the board, with a vent near the end.
+  const backplate = gunmetal("#23272d");
+  group.add(at(box(L, 0.08, W, backplate, 0.04), 0, 0.12, 0));
+  group.add(at(box(L * 0.2, 0.01, W * 0.6, plastic("#07080a", 0.8)), L / 2 - L * 0.16, 0.165, 0));
   group.add(at(box(L - 0.3, 0.1, W - 0.3, pcb("#14361f")), 0, 0.22, 0));
   // PCI Express contacts on the long edge, starting just after the bracket as on a real card.
   // Named, so the desktop board can line them up with its x16 slot.
@@ -236,28 +244,60 @@ export function graphicsCard(part: DetectedPart): Model {
   const pins: [number, number, number][] = [];
   for (let i = 0; i < 30; i++) pins.push([-L / 2 + 0.65 + i * 0.14 + (i > 6 ? 0.12 : 0), 0.27, W / 2 + 0.25]);
   group.add(instanced(new BoxGeometry(0.08, 0.012, 0.36), gold(), pins));
-  // Bracket
+  // The heatsink: a dense stack of aluminium fins, seen along both long sides.
+  const fins: [number, number, number][] = [];
+  for (let x = -L / 2 + 0.45; x < L / 2 - 0.35; x += 0.11) fins.push([x, base + FIN / 2, 0]);
+  group.add(instanced(new BoxGeometry(0.035, FIN, W - 0.5), aluminium("#aeb4bc"), fins));
+  // Copper heat pipes running through the fins.
+  const copper = metal("#c07a43", 0.3);
+  for (const z of [-0.9, -0.3, 0.3, 0.9]) {
+    const pipe = new Mesh(new CylinderGeometry(0.09, 0.09, L - 1.2, 16), copper);
+    pipe.rotation.z = Math.PI / 2;
+    pipe.position.set(0, base + 0.25, z);
+    group.add(pipe);
+  }
+  // Bracket with display outputs and vents.
   const bracket = metal("#c9ced5", 0.35);
-  group.add(at(box(0.07, 1.8, W + 0.3, bracket), -L / 2 - 0.05, 0.85, 0));
-  for (let i = 0; i < 5; i++) group.add(at(box(0.02, 0.9, 0.22, plastic("#0d0f12")), -L / 2 - 0.09, 1.0, -1.4 + i * 0.6));
-  // Shroud with accents
+  group.add(at(box(0.07, top + 0.35, W + 0.3, bracket), -L / 2 - 0.05, (top + 0.35) / 2, 0));
+  for (let i = 0; i < 4; i++) group.add(at(box(0.04, 0.32, 0.55, plastic("#0d0f12")), -L / 2 - 0.1, 0.6, -1.5 + i * 0.75));
+  for (let i = 0; i < 6; i++) group.add(at(box(0.02, 0.12, 0.6, plastic("#0d0f12")), -L / 2 - 0.09, 1.05 + (i % 2) * 0.2, -1.5 + Math.floor(i / 2) * 1.0));
+  // The shroud: a top plate with a bevelled frame around each fan, metal trim along the top edge.
   const shroud = gunmetal("#2a2e35");
-  group.add(at(box(L, H, W, shroud, 0.2), 0, 0.3 + H / 2, 0));
-  const accent = gunmetal("#4b525c");
-  group.add(at(box(L * 0.92, 0.04, 0.3, accent), 0, 0.3 + H + 0.01, W / 2 - 0.35));
-  group.add(at(box(L * 0.92, 0.04, 0.3, accent), 0, 0.3 + H + 0.01, -W / 2 + 0.35));
+  group.add(at(box(L, 0.2, W, shroud, 0.08), 0, top + 0.1, 0));
+  const accent = gunmetal("#5a626e");
+  group.add(at(box(L - 0.2, 0.06, 0.18, accent, 0.03), 0, top + 0.23, -W / 2 + 0.16));
+  group.add(at(box(L - 0.2, 0.06, 0.12, accent, 0.03), 0, top + 0.23, W / 2 - 0.13));
+  // End cap and side skirts leave the fins visible in the middle, like a real cooler.
+  group.add(at(box(0.25, FIN, W, shroud, 0.06), L / 2 - 0.12, base + FIN / 2, 0));
+  for (const z of [-W / 2 + 0.06, W / 2 - 0.06]) {
+    group.add(at(box(L * 0.18, FIN * 0.9, 0.12, shroud, 0.04), -L / 2 + L * 0.09 + 0.1, base + FIN * 0.45, z));
+    group.add(at(box(L * 0.18, FIN * 0.9, 0.12, shroud, 0.04), L / 2 - L * 0.09 - 0.2, base + FIN * 0.45, z));
+  }
+  // Power connectors on the top edge (opposite the contacts).
+  const plug = plastic("#111317", 0.5);
+  for (let i = 0; i < (big ? 2 : 1); i++) group.add(at(box(0.9, 0.42, 0.5, plug, 0.04), L / 2 - 1.6 - i * 1.05, base + 0.45, -W / 2 + 0.05));
+  // RGB strip and the name on the top edge, which faces you in a case with a glass side.
   const rgbMaterial = glow("#3b7bff", 2.2);
-  group.add(at(box(L * 0.62, 0.1, 0.03, rgbMaterial), 0.6, 0.3 + H * 0.55, W / 2 + 0.01));
+  group.add(at(box(L * 0.5, 0.08, 0.03, rgbMaterial), 0.9, top - 0.05, -W / 2 - 0.005));
   const brand = /nvidia|geforce|rtx|gtx/i.test(part.name) ? "GEFORCE RTX" : /radeon/i.test(part.name) ? "RADEON" : "ARC";
   const side = new Mesh(
-    new PlaneGeometry(3.4, 0.6),
+    new PlaneGeometry(3.0, 0.5),
     new MeshStandardMaterial({ map: labelTexture([{ text: brand, size: 110, weight: 800, color: "#e9ecf1", spacing: 8 }], 1024, 180), transparent: true, roughness: 0.4 }),
   );
-  side.position.set(-2.6, 0.3 + H * 0.55, W / 2 + 0.012);
+  side.position.set(-L / 2 + 2.3, top - 0.05, -W / 2 - 0.006);
+  side.rotation.y = Math.PI;
+  side.name = "brand";
   group.add(side);
-  const fans = [-2.55, 2.55].map((x) => {
-    const f = fan(1.75);
-    f.group.position.set(x, 0.3 + H + 0.001, 0);
+  // Fans with a raised frame ring around each opening.
+  const radius = Math.min(W / 2 - 0.3, (L - 0.9) / (fanCount * 2) - 0.12);
+  const fans = Array.from({ length: fanCount }, (_, i) => {
+    const x = -L / 2 + 0.55 + (L - 1.1) * ((i + 0.5) / fanCount);
+    const ring = new Mesh(new TorusGeometry(radius + 0.1, 0.08, 10, 48), accent);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(x, top + 0.22, 0);
+    group.add(ring);
+    const f = fan(radius);
+    f.group.position.set(x, top + 0.2, 0);
     group.add(f.group);
     return f;
   });
@@ -293,8 +333,28 @@ function memory(part: DetectedPart): Model {
   }
   group.add(instanced(new BoxGeometry(0.11, 0.3, 0.01), gold(), pins));
   const spreader = gunmetal("#2c3138");
-  for (const z of [-0.14, 0.14]) group.add(at(box(L - 0.2, 2.5, 0.12, spreader, 0.05), 0, 1.75, z));
+  const inset = gunmetal("#454c56");
+  for (const z of [-0.14, 0.14]) {
+    group.add(at(box(L - 0.2, 2.5, 0.12, spreader, 0.05), 0, 1.75, z));
+    // A raised plate with slanted ends and grooves, like the spreaders on real kits.
+    const plate = new Shape();
+    plate.moveTo(-L / 2 + 0.9, 0.9);
+    plate.lineTo(L / 2 - 1.6, 0.9);
+    plate.lineTo(L / 2 - 0.6, 2.45);
+    plate.lineTo(-L / 2 + 1.9, 2.45);
+    plate.closePath();
+    const geometry = new ExtrudeGeometry(plate, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.03, bevelSegments: 2 });
+    const mesh = new Mesh(geometry, inset);
+    mesh.position.z = z > 0 ? z + 0.06 : z - 0.11;
+    mesh.castShadow = true;
+    group.add(mesh);
+    for (let i = 0; i < 6; i++) group.add(at(box(0.05, 1.2, 0.03, spreader), L / 2 - 2.6 - i * 0.28, 1.65, z + (z > 0 ? 0.13 : -0.13)));
+  }
+  // A ridged top edge.
   group.add(at(box(L - 0.2, 0.28, 0.42, gunmetal("#3a4048"), 0.08), 0, 3.12, 0));
+  const ridges: [number, number, number][] = [];
+  for (let x = -L / 2 + 0.6; x < L / 2 - 0.5; x += 0.42) ridges.push([x, 3.28, 0]);
+  group.add(instanced(new BoxGeometry(0.2, 0.06, 0.36), gunmetal("#4a515b"), ridges));
   const capacity = part.specs.capacityGb ? `${part.specs.capacityGb} GB` : "";
   const label = new Mesh(
     new PlaneGeometry(6, 1.1),
@@ -311,7 +371,7 @@ function memory(part: DetectedPart): Model {
       roughness: 0.5,
     }),
   );
-  label.position.set(-2.4, 1.85, 0.205);
+  label.position.set(-1.2, 1.85, 0.29);
   group.add(label);
   const rgb = /rgb|trident|dominator|xpg|delta|fury beast|vengeance/i.test(part.name);
   const bar = glow("#ff3df0", 2);
@@ -334,7 +394,15 @@ function storage(part: DetectedPart): Model {
   const capacity = capacityText(part.specs.capacityGb);
   const group = new Group();
   if (kind === "HDD") {
-    group.add(at(box(10.2, 2.6, 14.6, aluminium("#bfc4ca"), 0.15), 0, 1.3, 0));
+    group.add(at(box(10.2, 2.4, 14.6, aluminium("#9fa6af"), 0.15), 0, 1.2, 0));
+    // The top cover: a raised plate with the round bulge over the platters and the arm.
+    const cover = aluminium("#c4c9cf");
+    group.add(at(box(9.4, 0.18, 13.8, cover, 0.12), 0, 2.48, 0));
+    group.add(at(new Mesh(new CylinderGeometry(4.2, 4.2, 0.12, 64), cover), 0, 2.62, 1.6));
+    group.add(at(new Mesh(new CylinderGeometry(1.1, 1.1, 0.1, 32), aluminium("#aeb4bb")), 2.9, 2.6, -4.2));
+    // The SATA data and power connectors on the back.
+    group.add(at(box(1.6, 0.6, 0.4, plastic("#121418", 0.5)), -2.6, 0.55, -7.35));
+    group.add(at(box(3.0, 0.6, 0.4, plastic("#121418", 0.5)), 0.4, 0.55, -7.35));
     const sticker = canvasTexture(512, 720, (ctx, w, h) => {
       ctx.fillStyle = "#f4f5f7";
       ctx.fillRect(0, 0, w, h);
@@ -345,8 +413,8 @@ function storage(part: DetectedPart): Model {
       ctx.fillText(capacity, 40, 180);
       for (let i = 0; i < 60; i++) ctx.fillRect(40 + i * 7, 560, i % 3 ? 3 : 5, 90);
     });
-    group.add(at(topLabel(sticker, 6.2, 8.6), 0, 2.602, -1.5));
-    for (const [x, z] of [[-4.6, -6.8], [4.6, -6.8], [-4.6, 6.8], [4.6, 6.8]]) group.add(at(new Mesh(new CylinderGeometry(0.22, 0.22, 0.05, 16), metal("#8d949e")), x, 2.62, z));
+    group.add(at(topLabel(sticker, 5.4, 7.4), 0, 2.69, 1.2));
+    for (const [x, z] of [[-4.3, -6.5], [4.3, -6.5], [-4.3, 6.5], [4.3, 6.5], [-4.3, 0], [4.3, 0]]) group.add(at(new Mesh(new CylinderGeometry(0.2, 0.2, 0.05, 16), metal("#7d848e")), x, 2.6, z));
     return { group, view: { elevation: 42 } };
   }
   if (kind === "UFS") {
