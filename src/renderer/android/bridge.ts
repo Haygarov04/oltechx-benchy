@@ -1,4 +1,6 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { App } from "@capacitor/app";
+import { checkForUpdate } from "../../shared/update";
 import { Browser } from "@capacitor/browser";
 import { createAccount } from "../../shared/account-core";
 import type { Account, Bridge, DiskResults, Hardware } from "../../shared/types";
@@ -45,6 +47,12 @@ export function installAndroidBridge() {
   const bridge: Bridge = {
     platform: "android",
     scan: async () => (hardware = phoneHardware(await Native.info())),
+    // The installed version from Android; the request goes through native HTTP, like the account.
+    update: async () =>
+      checkForUpdate((await App.getInfo()).version, async (url) => {
+        const response = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+        return response.ok ? response.json() : null;
+      }),
     account: () => account.account(),
     connectWithBrowser: (remember) => account.startBrowserPairing(remember, open, (result) => listeners.forEach((listener) => listener(result))),
     connectWithCode: (code, remember) => account.claim(code, remember),

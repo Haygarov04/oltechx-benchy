@@ -55,6 +55,33 @@ const ramTarget = (hardware: Hardware) =>
 
 const startProgress: Progress = { stage: "cpu", overall: 0, live: null, unit: null, samples: [], skipped: [], results: {} };
 
+/** „Има нова версия“: веднъж при пускане пита GitHub; бутонът отваря страницата за изтегляне в сайта. */
+function UpdateNotice() {
+  const { t } = useLang();
+  const [info, setInfo] = useState<{ current: string; latest: string } | null>(null);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void window.olx.update?.().then((result) => alive && setInfo(result ?? null)).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!info || hidden) return null;
+  const download = async () => window.olx.open(`${await window.olx.siteUrl()}/proverka`);
+  return (
+    <div className="update-notice rise" role="status">
+      <span>{t("updateText", { latest: info.latest, current: info.current })}</span>
+      <button type="button" className="btn btn-primary" onClick={() => void download()}>
+        {t("updateGet")}
+      </button>
+      <button type="button" className="btn btn-ghost" onClick={() => setHidden(true)}>
+        {t("updateLater")}
+      </button>
+    </div>
+  );
+}
+
 function LangSwitch() {
   const { lang, setLang } = useLang();
   return (
@@ -196,6 +223,7 @@ function Check() {
         <ThemeSwitch />
         <LangSwitch />
       </header>
+      <UpdateNotice />
 
       <main className="main">
         {stage.kind === "home" && (

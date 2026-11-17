@@ -119,4 +119,6 @@ export type Bridge = {
   open: (url: string) => Promise<void>;
   keepAwake: (on: boolean) => Promise<void>;
   siteUrl: () => Promise<string>;
+  /** A newer release on GitHub, or null. */
+  update?: () => Promise<{ current: string; latest: string } | null>;
 };

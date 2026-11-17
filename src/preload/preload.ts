@@ -23,6 +23,7 @@ const bridge: Bridge = {
   siteUrl: () => ipcRenderer.invoke("site-url"),
   diskTest: () => ipcRenderer.invoke("disk-test"),
   temps: () => ipcRenderer.invoke("temps"),
+  update: () => ipcRenderer.invoke("update"),
 };
 
 contextBridge.exposeInMainWorld("olx", bridge);

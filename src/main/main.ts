@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, powerSaveBlocker, shell } from "electron";
 import { desktopAccount as account, SITE, setDeviceName } from "./account";
 import { diskTest } from "./disk";
 import { readTemps, scanHardware } from "./hardware";
+import { checkForUpdate } from "../shared/update";
 
 // On laptops with two GPUs the test must run on the dedicated one.
 app.commandLine.appendSwitch("force_high_performance_gpu");
@@ -72,6 +73,14 @@ ipcMain.handle("keep-awake", (_event, on: boolean) => {
   }
 });
 ipcMain.handle("site-url", () => SITE);
+// Once per start: is there a newer release? The interface shows a notice with a download button.
+let update: ReturnType<typeof checkForUpdate> | null = null;
+ipcMain.handle("update", () =>
+  (update ??= checkForUpdate(app.getVersion(), async (url) => {
+    const response = await fetch(url, { headers: { Accept: "application/vnd.github+json", "User-Agent": "OLTechX-Check" }, signal: AbortSignal.timeout(8000) });
+    return response.ok ? response.json() : null;
+  })),
+);
 ipcMain.handle("disk-test", () => diskTest());
 ipcMain.handle("temps", () => readTemps());
 
