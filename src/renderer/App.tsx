@@ -1,5 +1,4 @@
 import {
-  CameraIcon,
   CpuIcon,
   ExternalLinkIcon,
   FingerprintIcon,
@@ -431,10 +430,10 @@ function Check() {
 
             {stage.uploaded && (
               <div className="card stack rise">
-                {/* Factory serial numbers tie the check to the device; without them the code must be in a photo. */}
+                {/* Factory serial numbers tie the check to the device. No photo is needed either way. */}
                 <div className="row" style={{ gap: 8 }}>
-                  {serials ? <FingerprintIcon aria-hidden="true" size={18} color="var(--primary)" /> : <CameraIcon aria-hidden="true" size={18} color="var(--primary)" />}
-                  <span>{serials ? t("noPhotoNeeded") : t("photoHint")}</span>
+                  <FingerprintIcon aria-hidden="true" size={18} color="var(--primary)" />
+                  <span>{serials ? t("noPhotoNeeded") : t("noSerials")}</span>
                 </div>
                 {/* Macs and laptops have soldered parts, so the whole device is sold. */}
                 {(!hardware.wholeOnly || separate) && (
