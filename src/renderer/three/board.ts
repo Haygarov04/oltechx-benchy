@@ -35,6 +35,34 @@ type Layout = { width: number; depth: number; hub: [number, number]; hubScale: n
 const DESK = { width: 27, depth: 25.92 };
 const px = (x: number, y: number): [number, number] => [(x / 1000 - 0.5) * DESK.width, (y / 960 - 0.5) * DESK.depth];
 
+/**
+ * Where things really are on the desktop board picture, so parts sit like in a real PC:
+ * memory sticks stand in the DIMM slots, the graphics card lies along the first x16 slot with its
+ * bracket at the back edge, NVMe drives go into the M.2 slots and SATA drives sit beside the board,
+ * cabled to the SATA ports.
+ */
+const DIMM_X = [603, 648, 697, 742];
+const DIMM_Y = 268;
+/** Which slots a kit fills, as the board manual says: one stick in A2, two in A2 and B2. */
+const DIMM_FILL: Record<number, number[]> = { 1: [1], 2: [1, 3], 3: [0, 1, 3], 4: [0, 1, 2, 3] };
+const PCIE_X16 = { x: 58, y: 558 };
+const M2_SLOTS = [px(362, 465), px(350, 648)];
+const SATA_PORTS = [550, 600, 650, 700].map((y) => px(966, y));
+/** 1 unit on the desktop board is 11.3 mm (an ATX board is 305 mm wide). */
+const MM = DESK.width / 305;
+
+/** How long the card is, from its class: big cards for the top models, short ones for entry level. */
+function cardLengthMm(name: string) {
+  if (/\b(4090|4080|3090|3080|5090|5080|7900|6950|6900)\b/i.test(name)) return 304;
+  if (/\b(4070|3070|5070|2080|6800|7800|1080 ti)\b/i.test(name)) return 267;
+  if (/\b(3060|4060 ti|5060 ti|2070|2060|1660|6700|6600|7700|7600|1080|1070|a770|a750|b580)\b/i.test(name)) return 242;
+  if (/\b(1650|1050|1030|4060|5060|6500|6400|rx 5[5-8]0|rx 4[6-8]0|a380|gt )\b/i.test(name)) return 200;
+  return 260;
+}
+
+const isDiscrete = (name: string) => /nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro|rx \d|arc a|arc b/i.test(name);
+const isSataDrive = (part: DetectedPart) => part.slot === "storage" && /^(HDD|SATA SSD)$/.test(String(part.specs.kind ?? ""));
+
 /** Apple silicon: processor, graphics and memory are one chip, so they sit on the board as one part. */
 export const isAppleSilicon = (parts: DetectedPart[]) => parts.some((p) => p.slot === "cpu" && /^apple\s+m\d/i.test(p.name));
 
@@ -281,6 +309,7 @@ export class BoardScene {
 
   /** Which part goes where on this board. On Apple silicon the graphics and memory live in the chip. */
   private placements(parts: DetectedPart[]): Placed[] {
+    if (this.kind === "desktop") return this.desktopPlacements(parts);
     const used = new Map<PartSlot, number>();
     const placed: Placed[] = [];
     parts.forEach((part, index) => {
@@ -294,6 +323,43 @@ export class BoardScene {
       const ram = parts.find((p) => p.slot === "ram");
       const shown = this.apple && part.slot === "cpu" && ram ? { ...part, specs: { ...part.specs, unifiedGb: ram.specs.capacityGb ?? null } } : part;
       placed.push({ index, part: shown, place, slot });
+    });
+    return placed;
+  }
+
+  /** SATA drives beside the board need room on the right; the camera backs off to show them. */
+  private extraRight = 0;
+
+  /** The desktop board: every part where it goes in a real PC, at its real size. */
+  private desktopPlacements(parts: DetectedPart[]): Placed[] {
+    const placed: Placed[] = [];
+    let m2 = 0;
+    let sata = 0;
+    let gpuDone = false;
+    const sataZ = [3.4, -6.6];
+    parts.forEach((part, index) => {
+      if (part.slot === "cpu") placed.push({ index, part, place: px(412, 290), slot: { at: [], size: 5.2 } });
+      else if (part.slot === "ram") {
+        // The sticks are drawn one by one; the place is the middle of the slots they fill.
+        const fill = DIMM_FILL[Math.min(4, Math.max(1, Number(part.specs.modules) || 2))];
+        const xs = fill.map((i) => px(DIMM_X[i], DIMM_Y)[0]);
+        placed.push({ index, part, place: [(Math.min(...xs) + Math.max(...xs)) / 2, px(0, DIMM_Y)[1]], slot: { at: [], size: 13.9 } });
+      } else if (part.slot === "gpu") {
+        // Graphics in the processor has no card: it is already shown by the processor.
+        if (gpuDone || !isDiscrete(part.name)) return;
+        gpuDone = true;
+        placed.push({ index, part, place: [0, 0], slot: { at: [], size: cardLengthMm(part.name) * MM } });
+      } else if (part.slot === "storage") {
+        if (isSataDrive(part)) {
+          if (sata >= sataZ.length) return;
+          const hdd = part.specs.kind === "HDD";
+          // A 3.5" disk is 147 mm long, a 2.5" SSD 100 mm; the disk is drawn a little smaller to keep the board large.
+          const size = hdd ? 11.6 : 100 * MM;
+          const width = hdd ? 8.1 : 7.4;
+          this.extraRight = Math.max(this.extraRight, width + 1.6);
+          placed.push({ index, part, place: [DESK.width / 2 + 1 + width / 2, sataZ[sata++]], slot: { at: [], size } });
+        } else if (m2 < M2_SLOTS.length) placed.push({ index, part, place: M2_SLOTS[m2++], slot: { at: [], size: 80 * MM } });
+      }
     });
     return placed;
   }
@@ -359,9 +425,33 @@ export class BoardScene {
     hubGlow.position.set(L.hub[0], TOP + 1.4, L.hub[1]);
     scene.add(hubGlow);
 
+    let sataPort = 0;
     for (const { index, part, place, slot } of placed) {
       const model = partModel(part);
-      if (slot.turn) {
+      const desktop = this.kind === "desktop";
+      if (desktop && part.slot === "ram") {
+        // One stick in each slot of the kit, standing up like in a real board.
+        const fill = DIMM_FILL[Math.min(4, Math.max(1, Number(part.specs.modules) || 2))];
+        const xs = fill.map((i) => px(DIMM_X[i], DIMM_Y)[0]);
+        const mid = (Math.min(...xs) + Math.max(...xs)) / 2;
+        const rack = new Group();
+        for (const x of xs) {
+          const stick = model.group.clone();
+          stick.rotation.y = Math.PI / 2;
+          stick.position.x = x - mid;
+          rack.add(stick);
+        }
+        model.group = rack;
+      } else if (desktop && part.slot === "gpu") {
+        // Mirrored so the contacts face the slot and the bracket stays at the back edge of the board.
+        // The mirror is inside, because the outer group is scaled to the card's length below.
+        const mirror = new Group();
+        mirror.add(model.group);
+        mirror.scale.z = -1;
+        const card = new Group();
+        card.add(mirror);
+        model.group = card;
+      } else if (slot.turn) {
         // Some parts lie the other way on this board, like memory in its slots.
         const turned = new Group();
         turned.add(model.group);
@@ -379,7 +469,24 @@ export class BoardScene {
       holder.add(model.group);
       holder.userData.body = this.bodies.length;
       scene.add(holder);
-      const home = new Vector3(place[0], TOP, place[1]);
+      let home = new Vector3(place[0], TOP, place[1]);
+      let traceTo: Vector3 | undefined;
+      if (desktop && part.slot === "gpu") {
+        // Line the contacts up with the x16 slot: they start at its back end and sit on its line.
+        holder.updateMatrixWorld(true);
+        const contacts = holder.getObjectByName("pcie");
+        if (contacts) {
+          const pins = new Box3().setFromObject(contacts);
+          const slotStart = px(PCIE_X16.x, PCIE_X16.y);
+          home = new Vector3(slotStart[0] - pins.min.x, TOP, slotStart[1] - (pins.min.z + pins.max.z) / 2);
+        }
+      }
+      if (desktop && isSataDrive(part)) {
+        // A SATA cable from the drive to its port; the light runs along the board to the port.
+        const port = SATA_PORTS[sataPort++ % SATA_PORTS.length];
+        traceTo = new Vector3(port[0], TOP, port[1]);
+        scene.add(this.cable(port, [home.x - slot.size * 0.35, home.z]));
+      }
       const body: Body = {
         index,
         slot: part.slot,
@@ -393,7 +500,7 @@ export class BoardScene {
         dropAt: 0.25 + this.bodies.length * 0.22,
         half: slot.size / 2,
         settled: false,
-        trace: this.trace(home),
+        trace: this.trace(traceTo ?? home),
       };
       this.bodies.push(body);
     }
@@ -407,6 +514,37 @@ export class BoardScene {
     rim.position.set(-18, 9, -16);
     ground.scale.setScalar(120);
     ground.position.y = -0.02;
+  }
+
+  /** A flat red SATA cable from a port on the board to a drive beside it, with a black plug at each end. */
+  private cable(port: [number, number], drive: [number, number]) {
+    const group = new Group();
+    const y = TOP + 0.08;
+    const ribbon = plastic("#c8262f", 0.45);
+    const plug = plastic("#14161a", 0.5);
+    const start = new Vector3(port[0] + 0.25, y, port[1]);
+    const end = new Vector3(drive[0], y + 0.25, drive[1]);
+    const bend = new Vector3((start.x + end.x) / 2, y + 0.35, start.z);
+    const points = [start, bend, new Vector3(bend.x, y + 0.35, end.z), end];
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const span = a.distanceTo(b);
+      if (span < 0.01) continue;
+      const piece = new Mesh(new BoxGeometry(span + 0.1, 0.06, 0.32), ribbon);
+      piece.position.copy(a).add(b).multiplyScalar(0.5);
+      piece.lookAt(b.x, piece.position.y, b.z);
+      piece.rotateY(Math.PI / 2);
+      piece.castShadow = true;
+      group.add(piece);
+    }
+    for (const p of [start, end]) {
+      const head = new Mesh(new BoxGeometry(0.5, 0.3, 0.5), plug);
+      head.position.copy(p);
+      head.castShadow = true;
+      group.add(head);
+    }
+    return group;
   }
 
   /** Three parallel traces from the hub to a part, with small lights that travel along them. */
@@ -593,8 +731,9 @@ export class BoardScene {
     const elevation = (56 * Math.PI) / 180;
     const azimuth = this.look.x * 0.06;
     const direction = new Vector3(Math.cos(elevation) * Math.sin(azimuth), Math.sin(elevation) + this.look.y * 0.03, Math.cos(elevation) * Math.cos(azimuth)).normalize();
-    const center = new Vector3(0, 0.6, 0.2);
-    const corners = [-1, 1].flatMap((x) => [-1, 1].flatMap((z) => [0, 4].map((y) => new Vector3((x * this.L.width) / 2, y, (z * this.L.depth) / 2))));
+    // SATA drives beside the desktop board are in the frame too.
+    const center = new Vector3(this.extraRight / 2, 0.6, 0.2);
+    const corners = [-1, 1].flatMap((x) => [-1, 1].flatMap((z) => [0, 4].map((y) => new Vector3(x < 0 ? -this.L.width / 2 : this.L.width / 2 + this.extraRight, y, (z * this.L.depth) / 2))));
     let distance = 60;
     for (let pass = 0; pass < 4; pass++) {
       this.camera.position.copy(center).addScaledVector(direction, distance);

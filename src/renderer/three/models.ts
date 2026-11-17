@@ -228,10 +228,13 @@ export function graphicsCard(part: DetectedPart): Model {
   const H = 1.0;
   group.add(at(box(L, 0.08, W, metal("#3b4048", 0.42), 0.04), 0, 0.12, 0));
   group.add(at(box(L - 0.3, 0.1, W - 0.3, pcb("#14361f")), 0, 0.22, 0));
-  // PCI Express contacts on the long edge
-  group.add(at(box(4.4, 0.08, 0.5, pcb("#14361f")), 1.2, 0.22, W / 2 + 0.2));
+  // PCI Express contacts on the long edge, starting just after the bracket as on a real card.
+  // Named, so the desktop board can line them up with its x16 slot.
+  const contacts = at(box(4.6, 0.08, 0.5, pcb("#14361f")), -L / 2 + 2.85, 0.22, W / 2 + 0.2);
+  contacts.name = "pcie";
+  group.add(contacts);
   const pins: [number, number, number][] = [];
-  for (let i = 0; i < 30; i++) pins.push([-0.9 + i * 0.14 + (i > 6 ? 0.12 : 0), 0.27, W / 2 + 0.25]);
+  for (let i = 0; i < 30; i++) pins.push([-L / 2 + 0.65 + i * 0.14 + (i > 6 ? 0.12 : 0), 0.27, W / 2 + 0.25]);
   group.add(instanced(new BoxGeometry(0.08, 0.012, 0.36), gold(), pins));
   // Bracket
   const bracket = metal("#c9ced5", 0.35);
